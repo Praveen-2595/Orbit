@@ -29,11 +29,11 @@
       --accent-hover: #ea580c;
       --accent-glow: rgba(249, 115, 22, 0.4);
       
-      --doom-safe: #22c55e;
-      --doom-rising: #eab308;
-      --doom-warning: #f97316;
-      --doom-danger: #ef4444;
-      --doom-critical: #dc2626;
+      --doom-safe: #1db954;
+      --doom-rising: #ff8c00;
+      --doom-warning: #e83030;
+      --doom-danger: #e83030;
+      --doom-critical: #e83030;
       
       --radius-sm: 6px;
       --radius-md: 8px;
@@ -247,21 +247,36 @@
       border-radius: 6px;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.3s ease, box-shadow 0.3s ease;
     }
 
-    .doom-bar.doom-bar-hot .doom-bar-track-glow {
+    .doom-bar.doom-bar-safe .doom-bar-track-glow {
       opacity: 1;
-      box-shadow: 0 0 24px rgba(239, 68, 68, 0.45), 0 0 48px rgba(220, 38, 38, 0.2);
-      animation: doom-track-glow 1.4s ease-in-out infinite;
+      box-shadow: 0 0 20px rgba(29, 185, 84, 0.4);
     }
 
-    @keyframes doom-track-glow {
+    .doom-bar.doom-bar-amber .doom-bar-track-glow {
+      opacity: 1;
+      box-shadow: 0 0 20px rgba(255, 140, 0, 0.4);
+    }
+
+    .doom-bar.doom-bar-red .doom-bar-track-glow {
+      opacity: 1;
+      box-shadow: 0 0 20px rgba(232, 48, 48, 0.4);
+    }
+
+    .doom-bar.doom-bar-critical .doom-bar-track-glow {
+      opacity: 1;
+      box-shadow: 0 0 24px rgba(232, 48, 48, 0.45), 0 0 48px rgba(232, 48, 48, 0.2);
+      animation: doom-track-glow-pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes doom-track-glow-pulse {
       0%, 100% {
-        box-shadow: 0 0 16px rgba(239, 68, 68, 0.35), 0 0 32px rgba(220, 38, 38, 0.15);
+        box-shadow: 0 0 16px rgba(232, 48, 48, 0.35), 0 0 32px rgba(232, 48, 48, 0.15);
       }
       50% {
-        box-shadow: 0 0 32px rgba(239, 68, 68, 0.7), 0 0 56px rgba(220, 38, 38, 0.35);
+        box-shadow: 0 0 32px rgba(232, 48, 48, 0.7), 0 0 56px rgba(232, 48, 48, 0.35);
       }
     }
 
@@ -509,26 +524,6 @@
     .chat-toggle-btn svg {
       width: 18px;
       height: 18px;
-    }
-
-    .chat-show-fab {
-      display: none;
-      position: fixed;
-      right: 20px;
-      bottom: 24px;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), #fb923c);
-      color: var(--bg-primary);
-      align-items: center;
-      justify-content: center;
-      z-index: 150;
-      box-shadow: 0 0 24px var(--accent-glow);
-    }
-
-    .app-body.chat-collapsed .chat-show-fab {
-      display: flex;
     }
 
     .checklists-stack {
@@ -1720,9 +1715,6 @@
         pointer-events: none;
       }
 
-      .chat-show-fab {
-        bottom: 88px;
-      }
       .sidebar {
         display: none;
       }
@@ -1733,10 +1725,6 @@
 
       .main {
         padding-bottom: 72px;
-      }
-
-      .chat-show-fab {
-        bottom: 88px;
       }
 
       .today-grid {
@@ -1780,7 +1768,143 @@
       font-family: var(--font-mono);
       font-size: 12px;
     }
+
+    /* Doom Onboarding Banner */
+    .doom-onboarding-banner {
+      display: none;
+      padding: 12px 16px;
+      background: rgba(255, 140, 0, 0.1);
+      border: 1px solid rgba(255, 140, 0, 0.3);
+      border-radius: var(--radius-md);
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      position: relative;
+    }
+
+    .doom-onboarding-banner.visible {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .doom-onboarding-banner .banner-text {
+      flex: 1;
+    }
+
+    .doom-onboarding-banner .banner-close {
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .doom-onboarding-banner .banner-close:hover {
+      background: rgba(255, 140, 0, 0.2);
+      color: var(--text-primary);
+    }
+
+    .doom-onboarding-banner .banner-close svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Doom Tooltip */
+    .doom-tooltip {
+      position: absolute;
+      bottom: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .doom-tooltip.visible {
+      opacity: 1;
+    }
+
+    .doom-tooltip .tooltip-line {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .doom-tooltip .tooltip-line:last-child {
+      margin-bottom: 0;
+    }
+
+    .doom-meter-top:hover .doom-tooltip {
+      opacity: 1;
+    }
+
+    /* Test Mode Panel */
+    .test-mode-panel {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      z-index: 1000;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .test-mode-panel.visible {
+      display: block;
+    }
+
+    .test-mode-panel h4 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+
+    .test-mode-panel button {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 12px;
+      transition: all 0.15s ease;
+    }
+
+    .test-mode-panel button:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--accent);
+    }
+
+    .test-mode-panel button:last-child {
+      margin-bottom: 0;
+    }
   </style>
+  <link rel="stylesheet" href="/orbit-ui.css">
 </head>
 <body>
   <div class="app">
@@ -1794,6 +1918,11 @@
         <div class="doom-bar-track-glow"></div>
         <div class="doom-fill" id="doom-fill" style="width: 0%; background: var(--doom-safe);"></div>
         <div class="doom-fill-shine" id="doom-fill-shine" style="width: 0%;"></div>
+      </div>
+      <div class="doom-tooltip" id="doom-tooltip">
+        <span class="tooltip-line" id="tooltip-hours">0 hours behind expected pace</span>
+        <span class="tooltip-line" id="tooltip-goals">0 goals need attention</span>
+        <span class="tooltip-line">Add sessions to bring doom down</span>
       </div>
     </div>
 
@@ -1858,7 +1987,7 @@
           <p class="main-subtitle" id="main-subtitle"></p>
         </div>
         <div class="main-header-actions">
-          <button type="button" class="chat-toggle-btn" id="header-chat-toggle" aria-label="Toggle chat panel" title="Toggle chat">
+          <button type="button" class="btn-icon" id="header-chat-toggle" aria-label="Toggle chat panel" title="Toggle chat">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
@@ -1869,6 +1998,15 @@
       <div class="main-content">
         <!-- Today Screen -->
         <div class="screen active" id="screen-today">
+          <div class="doom-onboarding-banner" id="doom-onboarding-banner">
+            <span class="banner-text">Doom is 0% because you have no active goals. Add a goal with a deadline to activate the meter.</span>
+            <button class="banner-close" id="doom-banner-close" aria-label="Dismiss">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
           <div class="today-grid">
             <div class="checklists-stack">
               <!-- Daily Checklist — resets every day -->
@@ -2018,11 +2156,6 @@
       </div>
     </aside>
 
-    <button type="button" class="chat-show-fab" id="chat-show-fab" aria-label="Show chat" title="Show chat">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </svg>
-    </button>
     </div>
   </div>
 
@@ -2149,6 +2282,16 @@
     </div>
   </div>
 
+  <!-- Test Mode Panel -->
+  <div class="test-mode-panel" id="test-mode-panel">
+    <h4>Test Mode</h4>
+    <button id="test-add-goal">Add test goal (7 days, 20hrs)</button>
+    <button id="test-simulate-days">Simulate 3 days passed</button>
+    <button id="test-log-progress">Log 2hrs progress</button>
+    <button id="test-reset">Reset all test data</button>
+  </div>
+
   <script src="/orbit-app.js"></script>
+  <script src="/orbit-ui.js"></script>
 </body>
 </html>

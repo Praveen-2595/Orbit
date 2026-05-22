@@ -132,7 +132,6 @@
   const appBody = document.querySelector('.app-body');
   const headerChatToggle = document.getElementById('header-chat-toggle');
   const chatPanelToggle = document.getElementById('chat-panel-toggle');
-  const chatShowFab = document.getElementById('chat-show-fab');
   const doomMeterTop = document.getElementById('doom-meter-top');
   const doomBarEl = document.getElementById('doom-bar');
   const doomFillShine = document.getElementById('doom-fill-shine');
@@ -144,13 +143,14 @@
 
   function setChatOpen(open) {
     localStorage.setItem(STORAGE_KEYS.CHAT_OPEN, open ? 'true' : 'false');
-    if (!chatPanel || !appBody) return;
+    if (!chatPanel) return;
     chatPanel.classList.toggle('collapsed', !open);
-    appBody.classList.toggle('chat-collapsed', !open);
+    document.body.classList.toggle('chat-open', open);
     if (chatPanelToggle) {
       chatPanelToggle.title = open ? 'Hide chat' : 'Show chat';
       chatPanelToggle.setAttribute('aria-label', open ? 'Hide chat' : 'Show chat');
     }
+    if (headerChatToggle) headerChatToggle.classList.toggle('active', open);
   }
 
   function toggleChatPanel() {
@@ -159,9 +159,7 @@
   }
 
   setChatOpen(isChatOpen());
-  if (headerChatToggle) headerChatToggle.addEventListener('click', toggleChatPanel);
   if (chatPanelToggle) chatPanelToggle.addEventListener('click', () => setChatOpen(false));
-  if (chatShowFab) chatShowFab.addEventListener('click', () => setChatOpen(true));
 
   function getTodayDateString() {
     return new Date().toDateString();
@@ -289,8 +287,7 @@
   function getDoomColor(doom) {
     if (doom <= 25) return 'var(--doom-safe)';
     if (doom <= 50) return 'var(--doom-rising)';
-    if (doom <= 70) return 'var(--doom-warning)';
-    if (doom <= 85) return 'var(--doom-danger)';
+    if (doom <= 75) return 'var(--doom-warning)';
     return 'var(--doom-critical)';
   }
 
@@ -306,7 +303,7 @@
     fill.style.background = color;
 
     fill.classList.remove('doom-fill-hot', 'doom-fill-critical');
-    if (doom > 85) fill.classList.add('doom-fill-critical');
+    if (doom > 75) fill.classList.add('doom-fill-critical');
     else if (doom > 50) fill.classList.add('doom-fill-hot');
 
     if (doomFillShine) {
@@ -315,13 +312,133 @@
     }
 
     if (doomBarEl) {
-      doomBarEl.classList.toggle('doom-bar-hot', doom > 50);
+      doomBarEl.classList.remove('doom-bar-safe', 'doom-bar-amber', 'doom-bar-red', 'doom-bar-critical', 'doom-bar-hot');
+      if (doom > 75) doomBarEl.classList.add('doom-bar-critical');
+      else if (doom > 50) doomBarEl.classList.add('doom-bar-red');
+      else if (doom > 25) doomBarEl.classList.add('doom-bar-amber');
+      else doomBarEl.classList.add('doom-bar-safe');
     }
     if (doomMeterTop) {
-      doomMeterTop.classList.toggle('doom-ambient-hot', doom > 70);
+      doomMeterTop.classList.toggle('doom-ambient-hot', doom > 75);
     }
 
+    // Update doom tooltip
+    updateDoomTooltip(doom);
+
+    // Update onboarding banner
+    updateOnboardingBanner();
+
     updateMemory();
+    window.dispatchEvent(new CustomEvent('orbit:refresh'));
+  }
+
+  function updateDoomTooltip(doom) {
+    const tooltipHours = document.getElementById('tooltip-hours');
+    const tooltipGoals = document.getElementById('tooltip-goals');
+    if (!tooltipHours || !tooltipGoals) return;
+
+    // Calculate hours behind expected pace
+    let totalHoursBehind = 0;
+    let goalsNeedingAttention = 0;
+    const now = new Date();
+
+    goals.forEach((goal) => {
+      const deadline = new Date(goal.deadline);
+      if (!isValidDate(deadline)) return;
+
+      const created = new Date(goal.created_at || now);
+      const totalDays = Math.max(1, (deadline - created) / 86400000);
+      const daysLeft = Math.max(0, (deadline - now) / 86400000);
+      const elapsed = Math.max(0, totalDays - daysLeft);
+      const expectedProgress = Math.min(1, elapsed / totalDays);
+      const expectedHours = expectedProgress * (Number(goal.total_hours) || 1);
+      const actualHours = Number(goal.logged_hours) || 0;
+      const hoursBehind = Math.max(0, expectedHours - actualHours);
+
+      if (hoursBehind > 0.5) {
+        totalHoursBehind += hoursBehind;
+        goalsNeedingAttention++;
+      }
+    });
+
+    tooltipHours.textContent = `${Math.round(totalHoursBehind * 10) / 10} hours behind expected pace`;
+    tooltipGoals.textContent = `${goalsNeedingAttention} goals need attention`;
+  }
+
+  function updateOnboardingBanner() {
+    const banner = document.getElementById('doom-onboarding-banner');
+    if (!banner) return;
+
+    const hasDismissed = localStorage.getItem('orbit_doom_banner_dismissed') === 'true';
+    if (hasDismissed) {
+      banner.classList.remove('visible');
+      return;
+    }
+
+    if (goals.length === 0) {
+      banner.classList.add('visible');
+    } else {
+      banner.classList.remove('visible');
+    }
+  }
+
+  function initTestMode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isTestMode = urlParams.get('test') === 'true';
+    const testPanel = document.getElementById('test-mode-panel');
+
+    if (!testPanel) return;
+
+    if (isTestMode) {
+      testPanel.classList.add('visible');
+
+      document.getElementById('test-add-goal').addEventListener('click', () => {
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + 7);
+        goals.push({
+          id: generateId(),
+          title: 'Test Goal',
+          subject: 'Testing',
+          total_hours: 20,
+          logged_hours: 0,
+          deadline: deadline.toISOString().split('T')[0],
+          priority: 2,
+          linked_vision_id: null,
+          created_at: new Date().toISOString(),
+        });
+        saveData(STORAGE_KEYS.GOALS, goals);
+        renderGoals();
+        updateDoomMeter();
+      });
+
+      document.getElementById('test-simulate-days').addEventListener('click', () => {
+        goals.forEach((goal) => {
+          const created = new Date(goal.created_at || Date.now());
+          created.setDate(created.getDate() - 3);
+          goal.created_at = created.toISOString();
+        });
+        saveData(STORAGE_KEYS.GOALS, goals);
+        renderGoals();
+        updateDoomMeter();
+      });
+
+      document.getElementById('test-log-progress').addEventListener('click', () => {
+        const activeGoals = goals.filter((g) => safeProgress(g.logged_hours, g.total_hours) < 100);
+        if (activeGoals.length > 0) {
+          activeGoals[0].logged_hours = (Number(activeGoals[0].logged_hours) || 0) + 2;
+          saveData(STORAGE_KEYS.GOALS, goals);
+          renderGoals();
+          updateDoomMeter();
+        }
+      });
+
+      document.getElementById('test-reset').addEventListener('click', () => {
+        goals = [];
+        saveData(STORAGE_KEYS.GOALS, goals);
+        renderGoals();
+        updateDoomMeter();
+      });
+    }
   }
 
   const navItems = document.querySelectorAll('.nav-item[data-screen]');
@@ -365,7 +482,11 @@
       mainSubtitle.textContent = info.subtitle;
     }
 
-    if (screen === 'overview') renderOverview();
+    if (screen === 'overview') {
+      renderOverview();
+      window.dispatchEvent(new CustomEvent('orbit:overview'));
+    }
+    window.dispatchEvent(new CustomEvent('orbit:refresh'));
   }
 
   function bindNav(items) {
@@ -455,6 +576,7 @@
     resetDailyChecklistIfNewDay();
     renderDailyChecklist();
     renderTodayChecklist();
+    window.dispatchEvent(new CustomEvent('orbit:refresh'));
   }
 
   function getGoalTitle(goalId) {
@@ -468,6 +590,7 @@
     const list = listType === 'daily' ? dailyChecklist : todayChecklist;
     const item = list.find((i) => i.id === id);
     if (!item) return;
+    const wasCompleted = item.completed;
     item.completed = !item.completed;
     item.completed_at = item.completed ? new Date().toISOString() : null;
     if (listType === 'daily') {
@@ -477,6 +600,11 @@
     }
     renderChecklists();
     updateDoomMeter();
+    if (item.completed && !wasCompleted) {
+      window.dispatchEvent(
+        new CustomEvent('orbit:habitComplete', { detail: { id, listType } }),
+      );
+    }
   }
 
   function deleteChecklistItem(listType, id) {
@@ -604,6 +732,7 @@
       renderSessionDots();
       creditPomodoroHours(25);
       updateDoomMeter();
+      window.dispatchEvent(new CustomEvent('orbit:sessionComplete'));
 
       pomodoroState.isBreak = true;
       pomodoroState.timeLeft = 5 * 60;
@@ -718,20 +847,13 @@
 
   function renderGoals() {
     if (goals.length === 0) {
-      goalsGrid.innerHTML = `
-        <div class="empty-state" style="grid-column: 1 / -1;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22,4 12,14.01 9,11.01"/>
-          </svg>
-          <h3>No goals yet</h3>
-          <p>Add your first goal to start tracking progress</p>
-        </div>
-      `;
+      goalsGrid.innerHTML = '';
+      window.dispatchEvent(new CustomEvent('orbit:refresh'));
       return;
     }
 
     goalsGrid.innerHTML = goals.map((goal) => renderGoalCard(goal, true)).join('');
+    window.dispatchEvent(new CustomEvent('orbit:refresh'));
   }
 
   function deleteGoal(id) {
@@ -789,6 +911,7 @@
     goalModal.classList.remove('active');
     renderGoals();
     updateDoomMeter();
+    window.dispatchEvent(new CustomEvent('orbit:refresh'));
   });
 
   const visionGrid = document.getElementById('vision-grid');
@@ -801,15 +924,8 @@
 
   function renderVisions() {
     if (visions.length === 0) {
-      visionGrid.innerHTML = `
-        <div class="empty-state" style="grid-column: 1 / -1;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-          </svg>
-          <h3>No life visions yet</h3>
-          <p>Define your big-picture goals for the next 1-5 years</p>
-        </div>
-      `;
+      visionGrid.innerHTML = '';
+      window.dispatchEvent(new CustomEvent('orbit:refresh'));
       return;
     }
 
@@ -838,6 +954,7 @@
         `;
       })
       .join('');
+    window.dispatchEvent(new CustomEvent('orbit:refresh'));
   }
 
   function deleteVision(id) {
@@ -889,50 +1006,8 @@
     updateDoomMeter();
   });
 
-  const overviewStats = document.getElementById('overview-stats');
-  const overviewGoals = document.getElementById('overview-goals');
-
   function renderOverview() {
-    const combined = getCombinedTodayTasks();
-    const completedToday = combined.filter((i) => i.completed).length;
-
-    const todaySessions = sessions.filter((s) => {
-      const logged = new Date(s.logged_at);
-      return isValidDate(logged) && logged.toDateString() === today && s.type === 'pomodoro';
-    });
-
-    const totalHoursLogged = goals.reduce(
-      (sum, g) => sum + (Number(g.logged_hours) || 0),
-      0,
-    );
-    const doom = calculateDoom();
-
-    overviewStats.innerHTML = `
-      <div class="stat-card">
-        <div class="stat-label">Tasks Today</div>
-        <div class="stat-value">${completedToday}/${combined.length}</div>
-        <div class="stat-change ${completedToday === combined.length && combined.length > 0 ? 'positive' : ''}">
-          ${combined.length === 0 ? 'No tasks' : completedToday === combined.length ? 'All done!' : `${combined.length - completedToday} remaining`}
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Focus Sessions</div>
-        <div class="stat-value">${todaySessions.length}</div>
-        <div class="stat-change">${todaySessions.length * 25} minutes focused</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Hours Logged</div>
-        <div class="stat-value">${Math.round(totalHoursLogged * 10) / 10}</div>
-        <div class="stat-change">Across ${goals.length} goals</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Doom Level</div>
-        <div class="stat-value" style="color: ${getDoomColor(doom)}">${doom}%</div>
-        <div class="stat-change">${doom <= 25 ? 'On track' : doom <= 50 ? 'Needs attention' : doom <= 70 ? 'Falling behind' : 'Critical'}</div>
-      </div>
-    `;
-
-    overviewGoals.innerHTML = goals.map((goal) => renderGoalCard(goal, false)).join('');
+    window.dispatchEvent(new CustomEvent('orbit:overview'));
   }
 
   const chatMessages = document.getElementById('chat-messages');
@@ -1107,6 +1182,43 @@ RULES:
   renderVisions();
   updateDoomMeter();
   restoreChatUI();
+  window.dispatchEvent(new CustomEvent('orbit:refresh'));
+
+  // Auto-recalculate doom every 60 seconds
+  setInterval(() => {
+    updateDoomMeter();
+  }, 60000);
+
+  // Initialize test mode if ?test=true in URL
+  initTestMode();
+
+  // Initialize onboarding banner close button
+  const bannerClose = document.getElementById('doom-banner-close');
+  if (bannerClose) {
+    bannerClose.addEventListener('click', () => {
+      localStorage.setItem('orbit_doom_banner_dismissed', 'true');
+      const banner = document.getElementById('doom-onboarding-banner');
+      if (banner) banner.classList.remove('visible');
+    });
+  }
+
+  window.ORBIT = {
+    getState: () => ({
+      dailyChecklist,
+      todayChecklist,
+      goals,
+      visions,
+      sessions,
+      memory,
+      calculateDoom,
+      getDoomColor,
+      getCombinedTodayTasks,
+      escapeHtml,
+      getGoalTitle,
+      safeProgress,
+      isValidDate,
+    }),
+  };
 
   document.querySelectorAll('.modal-overlay').forEach((overlay) => {
     overlay.addEventListener('click', (e) => {
