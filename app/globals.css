@@ -123,3 +123,157 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Doom Recommendation Component Styles */
+.doom-recommendation-container {
+  position: relative;
+  margin: 1rem 0;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.doom-recommendation-container.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.doom-recommendation {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+}
+
+.doom-rec-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.doom-rec-icon {
+  font-size: 1.25rem;
+}
+
+.doom-rec-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.doom-rec-dismiss {
+  background: transparent;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doom-rec-dismiss:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.doom-rec-message {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--card-foreground);
+  margin-bottom: 1rem;
+}
+
+.doom-rec-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.doom-rec-action {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.doom-rec-action-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.doom-rec-action-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.doom-rec-action-secondary {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border-color: var(--border);
+}
+
+.doom-rec-action-secondary:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* Priority-specific styling */
+.doom-rec-low {
+  border-left: 4px solid #22c55e;
+}
+
+.doom-rec-low .doom-rec-title {
+  color: #22c55e;
+}
+
+.doom-rec-medium {
+  border-left: 4px solid #eab308;
+}
+
+.doom-rec-medium .doom-rec-title {
+  color: #eab308;
+}
+
+.doom-rec-high {
+  border-left: 4px solid #f97316;
+}
+
+.doom-rec-high .doom-rec-title {
+  color: #f97316;
+}
+
+.doom-rec-critical {
+  border-left: 4px solid #ef4444;
+  animation: pulse-border 2s infinite;
+}
+
+.doom-rec-critical .doom-rec-title {
+  color: #ef4444;
+}
+
+@keyframes pulse-border {
+  0%, 100% {
+    border-left-color: #ef4444;
+  }
+  50% {
+    border-left-color: #dc2626;
+  }
+}
+
+/* Dark mode adjustments */
+.dark .doom-recommendation {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

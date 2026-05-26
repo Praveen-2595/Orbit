@@ -61,32 +61,34 @@
   }
 
   function getContextualChatMessage() {
-    const s = getState();
-    const doom = s.calculateDoom();
-    const goals = s.goals || [];
-    const behind = goals.filter((g) => {
-      const dl = new Date(g.deadline);
-      const created = new Date(g.created_at || Date.now());
-      if (!s.isValidDate(dl)) return false;
-      const totalDays = Math.max(1, (dl - created) / 86400000);
-      const daysLeft = Math.max(0, (dl - Date.now()) / 86400000);
-      const expected = Math.min(1, Math.max(0, 1 - daysLeft / totalDays));
-      const actual = (Number(g.logged_hours) || 0) / Math.max(0.01, Number(g.total_hours) || 1);
-      return expected - actual > 0.15;
-    });
+    const hour = new Date().getHours();
 
-    if (doom <= 25) {
-      return "orbit's quiet today. you're in the pocket — what's the move?";
+    if (hour >= 5 && hour < 12) {
+      return "Morning. What are we building today?";
     }
-    if (doom <= 60) {
-      const g = behind[0] || goals[0];
-      const name = g ? `"${g.title}"` : 'one of your goals';
-      return `you're doing ok. but ${name} could use a real push this week — want to talk it through?`;
+    if (hour >= 12 && hour < 17) {
+      return "You made it to the afternoon. What's actually on your mind?";
     }
-    const names = behind.slice(0, 2).map((g) => g.title).join(' and ');
-    return names
-      ? `real talk: ${names} ${behind.length > 1 ? 'are' : 'is'} at risk if nothing shifts. what's blocking you?`
-      : "doom's high. something's slipping — name it and we figure out the next hour.";
+    if (hour >= 17 && hour < 22) {
+      return "Evening. How did today go, really?";
+    }
+    return "Still up. What's keeping you?";
+  }
+
+  function updateChatDoomIndicator(doom, color) {
+    const doomPercent = document.getElementById('chat-doom-percent');
+    const doomDot = document.getElementById('chat-doom-dot');
+    if (!doomPercent || !doomDot) return;
+
+    doomPercent.textContent = `${doom}%`;
+    doomPercent.style.color = color;
+    doomDot.style.background = color;
+
+    if (doom > 50) {
+      doomDot.classList.add('pulsing');
+    } else {
+      doomDot.classList.remove('pulsing');
+    }
   }
 
   /* ---- Doom meter ---- */
@@ -97,6 +99,9 @@
     const s = getState();
     const doom = s.calculateDoom();
     const color = s.getDoomColor(doom);
+
+    // Update chat panel doom indicator
+    updateChatDoomIndicator(doom, color);
     const fill = document.getElementById('doom-fill');
     const valueEl = document.getElementById('doom-value');
     const shine = document.getElementById('doom-fill-shine');
@@ -121,6 +126,141 @@
     if (bar) bar.classList.toggle('doom-bar-hot', doom > 50);
   }
 
+  /* ---- Level System ---- */
+  const ORBIT_LEVELS = [
+    {
+      min: 0, max: 99,
+      id: 'drifting',
+      title: 'Drifting',
+      subtitle: 'finding your gravity',
+      color: '#7A7A88',
+      icon: '○'
+    },
+    {
+      min: 100, max: 299,
+      id: 'waking',
+      title: 'Waking Up',
+      subtitle: 'something is shifting',
+      color: '#FBBF24',
+      icon: '◐'
+    },
+    {
+      min: 300, max: 699,
+      id: 'rising',
+      title: 'Rising',
+      subtitle: 'momentum is building',
+      color: '#FF8C00',
+      icon: '◑'
+    },
+    {
+      min: 700, max: 1499,
+      id: 'inorbit',
+      title: 'In Orbit',
+      subtitle: 'you found your rhythm',
+      color: '#A78BFA',
+      icon: '◕'
+    },
+    {
+      min: 1500, max: 2999,
+      id: 'locked',
+      title: 'Locked In',
+      subtitle: 'nothing can stop this',
+      color: '#34D399',
+      icon: '●'
+    },
+    {
+      min: 3000, max: 999999,
+      id: 'unstoppable',
+      title: 'Unstoppable',
+      subtitle: 'you became the goal',
+      color: '#FF8C00',
+      icon: '★'
+    },
+  ];
+
+  function getCurrentLevel(points) {
+    return ORBIT_LEVELS.find(l =>
+      points >= l.min && points <= l.max
+    ) || ORBIT_LEVELS[0];
+  }
+
+  function getNextLevel(points) {
+    const idx = ORBIT_LEVELS.findIndex(l =>
+      points >= l.min && points <= l.max
+    );
+    return ORBIT_LEVELS[idx + 1] || null;
+  }
+
+  function getTotalPoints() {
+    const sessionPoints = parseInt(localStorage.getItem('orbit_session_points_ui') || '0', 10);
+    const habitPoints = parseInt(localStorage.getItem('orbit_habit_points_ui') || '0', 10);
+    return sessionPoints + habitPoints;
+  }
+
+  function updateLevelDisplay() {
+    const total = getTotalPoints();
+    const level = getCurrentLevel(total);
+    const next = getNextLevel(total);
+
+    const pct = next
+      ? ((total - level.min) / (next.min - level.min)) * 100
+      : 100;
+
+    const iconEl = document.getElementById('level-icon');
+    const titleEl = document.getElementById('level-title');
+    const subtitleEl = document.getElementById('level-subtitle');
+    const barFillEl = document.getElementById('level-bar-fill');
+    const ptsEl = document.getElementById('level-pts');
+
+    if (iconEl) {
+      iconEl.textContent = level.icon;
+      iconEl.style.color = level.color;
+    }
+    if (titleEl) {
+      titleEl.textContent = level.title;
+      titleEl.style.color = level.color;
+    }
+    if (subtitleEl) {
+      subtitleEl.textContent = level.subtitle;
+    }
+    if (barFillEl) {
+      barFillEl.style.width = pct + '%';
+      barFillEl.style.background = level.color;
+    }
+    if (ptsEl) {
+      ptsEl.textContent = next
+        ? total + ' / ' + next.min + ' pts'
+        : total + ' pts — MAX LEVEL';
+    }
+  }
+
+  function checkLevelUp(oldPoints, newPoints) {
+    const oldLevel = getCurrentLevel(oldPoints);
+    const newLevel = getCurrentLevel(newPoints);
+    if (oldLevel.id !== newLevel.id) {
+      showLevelUp(newLevel, newPoints - oldPoints);
+    }
+  }
+
+  function showLevelUp(level, gained) {
+    const el = document.createElement('div');
+    el.className = 'levelup-overlay';
+    el.id = 'levelup-overlay';
+    el.innerHTML = `
+      <div class="levelup-content">
+        <div class="levelup-icon"
+             style="color:${level.color}">${level.icon}</div>
+        <div class="levelup-tag">LEVEL UP</div>
+        <div class="levelup-title"
+             style="color:${level.color}">${level.title}</div>
+        <div class="levelup-sub">${level.subtitle}</div>
+        <div class="levelup-pts">+${gained} orbit points</div>
+      </div>
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2600);
+  }
+
   /* ---- Sidebar ring + points ---- */
   function updateSidebarOrbit() {
     const s = getState();
@@ -136,6 +276,8 @@
     const ptsEl = document.getElementById('orbit-points-today');
     const totalPts = habitPointsToday + sessionPointsToday;
     if (ptsEl) ptsEl.textContent = `${totalPts} orbit points today`;
+
+    updateLevelDisplay();
   }
 
   /* ---- Orbit score HUD ---- */
@@ -222,28 +364,14 @@
     setTimeout(() => el.remove(), 900);
   }
 
-  /* ---- Pomodoro ring ---- */
-  const POMO_TOTAL = 25 * 60;
-  function updatePomodoroRing() {
-    const ring = document.getElementById('pomodoro-ring-progress');
-    if (!ring) return;
-    const timeEl = document.getElementById('pomodoro-time');
-    if (!timeEl) return;
-    const parts = timeEl.textContent.split(':');
-    const secs = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-    const label = document.getElementById('pomodoro-label');
-    const total = label && label.textContent.includes('Break') ? 5 * 60 : POMO_TOTAL;
-    const c = 2 * Math.PI * 98;
-    const ratio = Math.max(0, secs / total);
-    ring.setAttribute('stroke-dasharray', String(c));
-    ring.setAttribute('stroke-dashoffset', String(c * (1 - ratio)));
-  }
-
   function showSessionComplete() {
     const overlay = document.getElementById('session-complete-overlay');
     if (!overlay) return;
+    const oldPoints = getTotalPoints();
     sessionPointsToday += 25;
     localStorage.setItem('orbit_session_points_ui', String(sessionPointsToday));
+    const newPoints = getTotalPoints();
+    checkLevelUp(oldPoints, newPoints);
     overlay.querySelector('.session-pts').textContent = '+25 orbit points';
     overlay.classList.add('active');
     setTimeout(() => overlay.classList.remove('active'), 2200);
@@ -256,6 +384,7 @@
     const panel = document.getElementById('chat-panel');
     const toggle = document.getElementById('header-chat-toggle');
     const closeBtn = document.getElementById('chat-panel-toggle');
+    const sidebarHint = document.getElementById('sidebar-ai-hint');
     if (!panel) return;
 
     function setOpen(open) {
@@ -283,6 +412,9 @@
     }
     if (closeBtn) {
       closeBtn.addEventListener('click', () => setOpen(false));
+    }
+    if (sidebarHint) {
+      sidebarHint.addEventListener('click', () => setOpen(panel.classList.contains('collapsed')));
     }
   }
 
@@ -417,7 +549,38 @@
     const doomGlow =
       doom >= 60 ? 'rgba(239,68,68,0.12)' : doom >= 25 ? 'rgba(249,115,22,0.08)' : 'transparent';
 
+    const totalPoints = getTotalPoints();
+    const level = getCurrentLevel(totalPoints);
+    const next = getNextLevel(totalPoints);
+    const pct = next ? ((totalPoints - level.min) / (next.min - level.min)) * 100 : 100;
+    const ptsAway = next ? next.min - totalPoints : 0;
+
     root.innerHTML = `
+      <div class="chart-panel" id="level-card-panel">
+        <h3>CURRENT LEVEL</h3>
+        <div class="level-card-content">
+          <div class="level-card-main">
+            <div class="level-card-top">
+              <span class="level-card-icon" style="color:${level.color}">${level.icon}</span>
+              <span class="level-card-title" style="color:${level.color}">${level.title}</span>
+              <span class="level-card-pts">${totalPoints} total pts</span>
+            </div>
+            <div class="level-card-sub">${level.subtitle}</div>
+            <div class="level-card-bar-wrap">
+              <div class="level-card-bar-fill" style="width:${pct}%;background:${level.color}"></div>
+            </div>
+            <div class="level-card-next">Next: ${next ? next.title + ' — ' + ptsAway + ' pts away' : 'MAX LEVEL'}</div>
+          </div>
+          <div class="level-card-dots">
+            ${ORBIT_LEVELS.map((l, i) => {
+              const isCurrent = l.id === level.id;
+              const isPast = ORBIT_LEVELS.findIndex(lvl => lvl.id === level.id) > i;
+              return `<span class="level-dot ${isCurrent ? 'current' : ''} ${isPast ? 'past' : ''}" style="color:${isCurrent || isPast ? l.color : '#3A3A45'}">${l.icon}</span>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
       <div class="overview-stats" id="overview-stats-row">
         <div class="stat-card-hud" style="--stat-accent:#22c55e">
           <div class="stat-label">Tasks Today</div>
@@ -691,7 +854,6 @@
     decorateChecklistItems();
     decorateGoalCards();
     decorateVisions();
-    updatePomodoroRing();
     const overview = document.getElementById('screen-overview');
     if (overview && overview.classList.contains('active')) {
       renderOverviewDashboard();
@@ -729,7 +891,17 @@
             </div>
           </div>
           <span class="logo-text">ORBIT</span>
-          <span class="orbit-points-today" id="orbit-points-today">0 orbit points today</span>
+          <div class="level-display" id="level-display">
+            <div class="level-top">
+              <span class="level-icon" id="level-icon">○</span>
+              <span class="level-title" id="level-title">Drifting</span>
+            </div>
+            <div class="level-subtitle" id="level-subtitle">finding your gravity</div>
+            <div class="level-bar-wrap">
+              <div class="level-bar-fill" id="level-bar-fill" style="width:0%"></div>
+            </div>
+            <div class="level-pts" id="level-pts">0 / 100 pts</div>
+          </div>
         </div>`;
     }
 
@@ -750,26 +922,6 @@
       todayScreen.insertBefore(hud, grid);
     }
 
-    const pomodoro = document.querySelector('.pomodoro');
-    if (pomodoro && !document.getElementById('pomodoro-ring-progress')) {
-      pomodoro.classList.add('pomodoro-stage');
-      const time = document.getElementById('pomodoro-time');
-      const label = document.getElementById('pomodoro-label');
-      const controls = document.querySelector('.pomodoro-controls');
-      pomodoro.innerHTML = `
-        <svg class="pomodoro-ring-svg" viewBox="0 0 220 220">
-          <circle class="track" cx="110" cy="110" r="98"/>
-          <circle class="progress" id="pomodoro-ring-progress" cx="110" cy="110" r="98"/>
-        </svg>
-        <div class="pomodoro-center"></div>`;
-      const center = pomodoro.querySelector('.pomodoro-center');
-      if (time) center.appendChild(time);
-      if (label) center.appendChild(label);
-      if (controls) pomodoro.appendChild(controls);
-      const sessions = pomodoro.querySelector('.pomodoro-sessions');
-      if (sessions) pomodoro.appendChild(sessions);
-    }
-
     if (!document.getElementById('session-complete-overlay')) {
       const ov = document.createElement('div');
       ov.id = 'session-complete-overlay';
@@ -788,18 +940,10 @@
     }
   }
 
-  function hookPomodoroObserver() {
-    const timeEl = document.getElementById('pomodoro-time');
-    if (!timeEl) return;
-    const obs = new MutationObserver(() => updatePomodoroRing());
-    obs.observe(timeEl, { childList: true, characterData: true, subtree: true });
-  }
-
   function waitForOrbit() {
     if (window.ORBIT) {
       initDOM();
       initChatUI();
-      hookPomodoroObserver();
       refreshAll();
       setTimeout(refreshAll, 100);
       return;
@@ -810,8 +954,11 @@
   window.addEventListener('orbit:refresh', refreshAll);
   window.addEventListener('orbit:overview', renderOverviewDashboard);
   window.addEventListener('orbit:habitComplete', (e) => {
+    const oldPoints = getTotalPoints();
     habitPointsToday += 10;
     localStorage.setItem('orbit_habit_points_ui', String(habitPointsToday));
+    const newPoints = getTotalPoints();
+    checkLevelUp(oldPoints, newPoints);
     const row = document.querySelector(`.checklist-item[data-id="${e.detail?.id}"]`);
     if (row) {
       row.classList.add('just-completed');

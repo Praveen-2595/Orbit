@@ -340,6 +340,201 @@
       100% { left: 120%; }
     }
 
+    /* Doom Recommendation Card */
+    .doom-recommendation-container {
+      width: 100%;
+      padding: 0 24px 12px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      position: relative;
+      z-index: 2;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+    }
+
+    .doom-recommendation-container.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .doom-recommendation {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .doom-recommendation::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.3s ease;
+    }
+
+    .doom-recommendation.visible::before {
+      transform: scaleX(1);
+    }
+
+    /* Priority-based styling */
+    .doom-rec-low {
+      border-left: 3px solid var(--doom-safe);
+    }
+
+    .doom-rec-low::before {
+      background: var(--doom-safe);
+    }
+
+    .doom-rec-medium {
+      border-left: 3px solid var(--doom-rising);
+    }
+
+    .doom-rec-medium::before {
+      background: var(--doom-rising);
+    }
+
+    .doom-rec-high {
+      border-left: 3px solid var(--doom-warning);
+    }
+
+    .doom-rec-high::before {
+      background: var(--doom-warning);
+    }
+
+    .doom-rec-critical {
+      border-left: 3px solid var(--doom-critical);
+      animation: critical-pulse 2s ease-in-out infinite;
+    }
+
+    .doom-rec-critical::before {
+      background: var(--doom-critical);
+    }
+
+    @keyframes critical-pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 rgba(232, 48, 48, 0);
+      }
+      50% {
+        box-shadow: 0 0 20px rgba(232, 48, 48, 0.3);
+      }
+    }
+
+    .doom-rec-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .doom-rec-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .doom-rec-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .doom-rec-dismiss {
+      margin-left: auto;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+    }
+
+    .doom-rec-dismiss:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .doom-rec-dismiss svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .doom-rec-message {
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+    }
+
+    .doom-rec-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .doom-rec-action {
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+
+    .doom-rec-action-primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+
+    .doom-rec-action-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+    }
+
+    .doom-rec-action-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .doom-rec-action-secondary:hover {
+      background: var(--bg-hover);
+      border-color: var(--border-light);
+    }
+
+    /* Animation for recommendation changes */
+    .doom-recommendation.updating {
+      animation: recommendation-update 0.4s ease;
+    }
+
+    @keyframes recommendation-update {
+      0% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      50% {
+        opacity: 0.5;
+        transform: translateY(-5px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     /* Navigation */
     .nav {
       flex: 1;
@@ -700,6 +895,179 @@
 
     .screen.active {
       display: block;
+    }
+
+    /* Stakes Onboarding Screen */
+    .stakes-onboarding-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 24px;
+      background: var(--bg-primary);
+      animation: fade-in 0.5s ease forwards;
+    }
+
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .stakes-onboarding-progress {
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 48px;
+    }
+
+    .stakes-progress-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--bg-tertiary);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .stakes-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.5s ease;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .stakes-progress-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stakes-question-container {
+      width: 100%;
+      max-width: 700px;
+      margin-bottom: 40px;
+    }
+
+    .stakes-question {
+      font-size: 28px;
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--text-primary);
+      margin-bottom: 32px;
+      text-align: center;
+      animation: slide-up 0.5s ease forwards;
+    }
+
+    @keyframes slide-up {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .stakes-answer {
+      width: 100%;
+      min-height: 200px;
+      padding: 24px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      color: var(--text-primary);
+      font-size: 18px;
+      line-height: 1.6;
+      font-family: var(--font-sans);
+      resize: vertical;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .stakes-answer:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .stakes-answer::placeholder {
+      color: var(--text-muted);
+    }
+
+    .stakes-onboarding-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .stakes-continue-btn {
+      width: 100%;
+      padding: 16px 32px;
+      background: var(--accent);
+      color: var(--bg-primary);
+      border: none;
+      border-radius: var(--radius-lg);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .stakes-continue-btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+
+    .stakes-continue-btn:active {
+      transform: translateY(0);
+    }
+
+    .stakes-skip-btn {
+      padding: 8px 16px;
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .stakes-skip-btn:hover {
+      color: var(--text-secondary);
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      .stakes-onboarding-container {
+        padding: 24px 16px;
+      }
+
+      .stakes-question {
+        font-size: 22px;
+      }
+
+      .stakes-answer {
+        font-size: 16px;
+        min-height: 180px;
+        padding: 20px;
+      }
+
+      .stakes-continue-btn {
+        padding: 14px 24px;
+        font-size: 15px;
+      }
     }
 
     /* Today Screen */
@@ -1903,6 +2271,950 @@
     .test-mode-panel button:last-child {
       margin-bottom: 0;
     }
+
+    /* Pomodoro Timer Fixes */
+    .pomodoro {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 24px;
+    }
+
+    .timer-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .pomodoro-ring-svg {
+      width: 200px;
+      height: 200px;
+      position: relative;
+    }
+
+    .pomodoro-ring-svg circle.track {
+      fill: none;
+      stroke: #1a1a1a;
+      stroke-width: 6;
+    }
+
+    .pomodoro-ring-svg circle.progress {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 6;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+      transition: stroke-dashoffset 1s linear;
+      filter: drop-shadow(0 0 12px var(--accent-glow));
+    }
+
+    .pomodoro-ring-svg circle.progress.break-mode {
+      stroke: #3b82f6;
+      filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.4));
+    }
+
+    .pomodoro-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .pomodoro-time {
+      font-size: 2.8rem !important;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      line-height: 1;
+      color: var(--text-primary);
+    }
+
+    .pomodoro-label {
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+    }
+
+    .pomodoro-edit-time {
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pomodoro-edit-time:hover {
+      color: var(--accent);
+    }
+
+    .pomodoro-edit-time svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .pomodoro-time-input {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .pomodoro-time-input.visible {
+      display: flex;
+    }
+
+    .pomodoro-time-input input {
+      width: 50px;
+      padding: 4px 8px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: var(--font-mono);
+    }
+
+    .pomodoro-time-input button {
+      padding: 4px 12px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: white;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .pomodoro-time-input button:hover {
+      background: var(--accent-hover);
+    }
+
+    .pomodoro-controls {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .pomodoro-break-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .pomodoro-settings {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #222;
+    }
+
+    .settings-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .pomodoro-settings input {
+      width: 48px;
+      padding: 4px 8px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-family: var(--font-mono);
+      text-align: center;
+    }
+
+    .pomodoro-settings input:focus {
+      border-color: #ff8c00;
+      outline: none;
+    }
+
+    .settings-apply-btn {
+      padding: 4px 12px;
+      background: transparent;
+      border: 1px solid #ff8c00;
+      border-radius: var(--radius-sm);
+      color: #ff8c00;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .settings-apply-btn:hover {
+      background: #ff8c00;
+      color: var(--bg-primary);
+    }
+
+    .settings-saved {
+      font-size: 11px;
+      color: #22c55e;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .settings-saved.visible {
+      opacity: 1;
+    }
+
+    .pomodoro-break-btn {
+      padding: 6px 12px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .pomodoro-break-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: #3b82f6;
+    }
+
+    .pomodoro-resume-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: rgba(249, 115, 22, 0.1);
+      border: 1px solid rgba(249, 115, 22, 0.3);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .pomodoro-resume-banner.visible {
+      display: flex;
+    }
+
+    .resume-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .pomodoro-btn.small {
+      padding: 4px 10px;
+      font-size: 11px;
+    }
+
+    .pomodoro-sessions {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .sessions-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .sessions-dots {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .session-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+    }
+
+    .session-dot.completed {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* Chat Ask Button */
+    .chat-ask-button {
+      background: rgba(232, 128, 0, 0.12);
+      border: 1px solid #ff8c00;
+      color: #ff8c00;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      width: auto;
+    }
+
+    .chat-ask-button:hover {
+      background: rgba(255, 140, 0, 0.08);
+      box-shadow: 0 0 12px rgba(255, 140, 0, 0.3);
+    }
+
+    .chat-ask-button.active {
+      background: rgba(255, 140, 0, 0.2);
+      box-shadow: 0 0 16px rgba(255, 140, 0, 0.4);
+    }
+
+    /* Sidebar AI Hint */
+    .sidebar-ai-hint {
+      margin-top: auto;
+      padding: 12px 16px;
+      background: rgba(249, 115, 22, 0.05);
+      border: 1px solid rgba(249, 115, 22, 0.2);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .sidebar-ai-hint:hover {
+      background: rgba(249, 115, 22, 0.1);
+      border-color: rgba(249, 115, 22, 0.4);
+    }
+
+    .sidebar-ai-hint .hint-title {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-ai-hint .hint-subtitle {
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+
+    /* Chat Panel Header Upgrade */
+    .chat-header .doom-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+      padding: 4px 8px;
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .chat-header .doom-indicator .doom-percent {
+      font-weight: 600;
+    }
+
+    .chat-header .doom-indicator .doom-status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .chat-header .doom-indicator .doom-status-dot.pulsing {
+      animation: doom-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes doom-pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.5;
+        transform: scale(0.8);
+      }
+    }
+
+    /* Stakes Onboarding Overlay */
+    .stakes-onboarding-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0a0a0a;
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stakes-onboarding-overlay.visible {
+      display: flex;
+    }
+
+    .stakes-onboarding-content {
+      max-width: 600px;
+      width: 90%;
+      padding: 40px;
+    }
+
+    .stakes-step h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .stakes-step .stakes-question {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .stakes-step .stakes-textarea {
+      width: 100%;
+      min-height: 150px;
+      padding: 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 1rem;
+      line-height: 1.6;
+      resize: vertical;
+      margin-bottom: 24px;
+    }
+
+    .stakes-step .stakes-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .stakes-step .stakes-textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    .stakes-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .stakes-btn {
+      padding: 12px 32px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-md);
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .stakes-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .stakes-skip {
+      padding: 12px 24px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: color 0.15s ease;
+    }
+
+    .stakes-skip:hover {
+      color: var(--text-secondary);
+    }
+
+    /* Stakes Trigger Card */
+    .stakes-trigger-card {
+      display: none;
+      padding: 16px 20px;
+      background: rgba(239, 68, 68, 0.05);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: var(--radius-md);
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stakes-trigger-card.visible {
+      display: block;
+    }
+
+    .stakes-trigger-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 120% at 50% 0%, rgba(239, 68, 68, 0.1), transparent 65%);
+      pointer-events: none;
+    }
+
+    .stakes-trigger-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--doom-danger);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stakes-trigger-card .stakes-content {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .stakes-trigger-card .stakes-content .stakes-quote {
+      font-style: italic;
+      color: var(--text-primary);
+    }
+
+    .stakes-trigger-card .stakes-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .stakes-trigger-card button {
+      padding: 8px 16px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .stakes-trigger-card button:hover {
+      background: var(--accent-hover);
+    }
+
+    .stakes-trigger-card .stakes-dismiss-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+    }
+
+    .stakes-trigger-card .stakes-dismiss-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      border-color: var(--border-light);
+    }
+
+    /* Goal Stakes Section */
+    .goal-stakes-section {
+      margin-top: 12px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 12px;
+    }
+
+    .goal-stakes-toggle {
+      width: 100%;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: color 0.15s ease;
+    }
+
+    .goal-stakes-toggle:hover {
+      color: var(--accent);
+    }
+
+    .goal-stakes-toggle svg {
+      width: 14px;
+      height: 14px;
+      transition: transform 0.15s ease;
+    }
+
+    .goal-stakes-toggle.expanded svg {
+      transform: rotate(180deg);
+    }
+
+    .goal-stakes-content {
+      margin-top: 12px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    .goal-stakes-content.expanded {
+      max-height: 500px;
+      opacity: 1;
+    }
+
+    .goal-stakes-field {
+      margin-bottom: 12px;
+    }
+
+    .goal-stakes-field:last-child {
+      margin-bottom: 0;
+    }
+
+    .goal-stakes-field label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .goal-stakes-input {
+      width: 100%;
+      min-height: 60px;
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 12px;
+      line-height: 1.4;
+      resize: vertical;
+    }
+
+    .goal-stakes-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .goal-stakes-slider {
+      width: 100%;
+      margin-bottom: 6px;
+    }
+
+    .goal-stakes-slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* Goal Deadline Time Input */
+    .deadline-time-toggle {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 10px;
+      cursor: pointer;
+      padding: 2px 4px;
+      margin-left: 4px;
+      transition: color 0.15s ease;
+    }
+
+    .deadline-time-toggle:hover {
+      color: var(--accent);
+    }
+
+    .deadline-time-input {
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-sm);
+    }
+
+    .deadline-time-field {
+      margin-bottom: 12px;
+    }
+
+    .deadline-time-field:last-child {
+      margin-bottom: 0;
+    }
+
+    .deadline-time-field label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .deadline-time-picker {
+      padding: 6px 8px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 12px;
+    }
+
+    .deadline-time-picker:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .deadline-hours-override-check {
+      width: auto;
+    }
+
+    .deadline-hours-override {
+      width: 50px;
+      padding: 4px 6px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 12px;
+    }
+
+    .deadline-hours-override:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .deadline-time-save {
+      width: 100%;
+      padding: 8px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: background 0.15s ease;
+    }
+
+    .deadline-time-save:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Deadline Color Coding */
+    .goal-deadline.deadline-warning {
+      color: var(--doom-warning);
+    }
+
+    .goal-deadline.deadline-critical {
+      color: var(--doom-danger);
+      animation: deadline-pulse-subtle 2s ease-in-out infinite;
+    }
+
+    .goal-deadline.deadline-urgent {
+      color: var(--doom-danger);
+      animation: deadline-pulse-fast 0.5s ease-in-out infinite;
+    }
+
+    .goal-deadline.deadline-overdue {
+      color: var(--doom-critical);
+      animation: deadline-pulse-fast 0.5s ease-in-out infinite;
+    }
+
+    .urgent-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      background: var(--doom-danger);
+      color: white;
+      font-size: 9px;
+      font-weight: 700;
+      border-radius: 4px;
+      margin-left: 4px;
+      animation: deadline-pulse-fast 0.5s ease-in-out infinite;
+    }
+
+    @keyframes deadline-pulse-subtle {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.7;
+      }
+    }
+
+    @keyframes deadline-pulse-fast {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    /* Due Today Section */
+    .due-today-section {
+      margin-bottom: 16px;
+    }
+
+    .due-today-section.hidden {
+      display: none;
+    }
+
+    .due-today-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .due-today-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .due-today-card {
+      padding: 12px 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .due-today-card.urgent {
+      border-color: var(--doom-danger);
+    }
+
+    .due-today-card.warning {
+      border-color: var(--doom-warning);
+    }
+
+    .due-today-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .due-today-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .due-today-card-time {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .due-today-card-progress {
+      margin-bottom: 8px;
+    }
+
+    .due-today-card-progress-bar {
+      height: 4px;
+      background: var(--bg-secondary);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+
+    .due-today-card-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+
+    .due-today-card-progress-text {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .due-today-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .due-today-card-info {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .due-today-card-action {
+      padding: 6px 12px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .due-today-card-action:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Time Critical Section */
+    .time-critical-section {
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-md);
+    }
+
+    .time-critical-section.hidden {
+      display: none;
+    }
+
+    .time-critical-header {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .time-critical-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .time-critical-item {
+      font-size: 11px;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .time-critical-item.urgent {
+      color: var(--doom-danger);
+    }
+
+    .time-critical-item.warning {
+      color: var(--doom-warning);
+    }
+
+    .time-critical-item-time {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
   </style>
   <link rel="stylesheet" href="/orbit-ui.css">
 </head>
@@ -1977,6 +3289,18 @@
         </button>
 
       </nav>
+
+      <!-- Time Critical Section -->
+      <div class="time-critical-section" id="time-critical-section">
+        <div class="time-critical-header">⏰ TIME CRITICAL</div>
+        <div class="time-critical-list" id="time-critical-list"></div>
+      </div>
+
+      <!-- Sidebar AI Hint -->
+      <div class="sidebar-ai-hint" id="sidebar-ai-hint">
+        <div class="hint-title">✦ ORBIT AI</div>
+        <div class="hint-subtitle">your companion is listening</div>
+      </div>
     </aside>
 
     <!-- Main Content -->
@@ -1987,15 +3311,35 @@
           <p class="main-subtitle" id="main-subtitle"></p>
         </div>
         <div class="main-header-actions">
-          <button type="button" class="btn-icon" id="header-chat-toggle" aria-label="Toggle chat panel" title="Toggle chat">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
+          <button type="button" class="chat-ask-button" id="header-chat-toggle" aria-label="Toggle chat panel" title="Toggle chat">
+            ✦ Ask ORBIT
           </button>
         </div>
       </header>
 
       <div class="main-content">
+        <!-- Stakes Onboarding Screen -->
+        <div class="screen" id="screen-stakes-onboarding">
+          <div class="stakes-onboarding-container">
+            <div class="stakes-onboarding-progress">
+              <div class="stakes-progress-bar">
+                <div class="stakes-progress-fill" id="stakes-progress-fill"></div>
+              </div>
+              <span class="stakes-progress-text" id="stakes-progress-text">Question 1 of 4</span>
+            </div>
+
+            <div class="stakes-question-container" id="stakes-question-container">
+              <h2 class="stakes-question" id="stakes-question"></h2>
+              <textarea class="stakes-answer" id="stakes-answer" placeholder="Type your answer here..."></textarea>
+            </div>
+
+            <div class="stakes-onboarding-actions">
+              <button class="stakes-continue-btn" id="stakes-continue-btn">Continue</button>
+              <button class="stakes-skip-btn" id="stakes-skip-btn">Skip for now</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Today Screen -->
         <div class="screen active" id="screen-today">
           <div class="doom-onboarding-banner" id="doom-onboarding-banner">
@@ -2006,6 +3350,22 @@
                 <line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             </button>
+          </div>
+          <div class="stakes-trigger-card" id="stakes-trigger-card">
+            <h3>⚠ REALITY CHECK</h3>
+            <div class="stakes-content">
+              <span class="stakes-days" id="stakes-days"></span>
+              <span class="stakes-quote" id="stakes-quote"></span>
+              That was true when you wrote it. It's still true.
+            </div>
+            <div class="stakes-actions">
+              <button id="stakes-trigger-action">I know. Show me what to do today →</button>
+              <button id="stakes-trigger-dismiss" class="stakes-dismiss-btn">Dismiss for 4 hours</button>
+            </div>
+          </div>
+          <div class="due-today-section" id="due-today-section">
+            <h3 class="due-today-title">DUE TODAY</h3>
+            <div class="due-today-cards" id="due-today-cards"></div>
           </div>
           <div class="today-grid">
             <div class="checklists-stack">
@@ -2065,11 +3425,70 @@
               </div>
               <div class="card-body">
                 <div class="pomodoro">
-                  <div class="pomodoro-time" id="pomodoro-time">25:00</div>
-                  <div class="pomodoro-label" id="pomodoro-label">Focus Session</div>
+                  <div class="timer-container">
+                    <svg viewBox="0 0 200 200" width="200" height="200">
+                      <!-- background track ring -->
+                      <circle 
+                        cx="100" cy="100" r="85"
+                        fill="none" 
+                        stroke="#1a1a1a" 
+                        stroke-width="8"
+                      />
+                      <!-- progress ring (animated) -->
+                      <circle 
+                        cx="100" cy="100" r="85"
+                        fill="none"
+                        stroke="#ff8c00"
+                        stroke-width="8"
+                        stroke-linecap="round"
+                        stroke-dasharray="534"
+                        stroke-dashoffset="0"
+                        transform="rotate(-90 100 100)"
+                        id="timer-ring"
+                      />
+                      <!-- timer text centered inside SVG -->
+                      <text 
+                        x="100" y="93" 
+                        text-anchor="middle" 
+                        dominant-baseline="middle"
+                        font-family="inherit"
+                        font-size="36"
+                        font-weight="700"
+                        fill="#ffffff"
+                        id="timer-svg-text"
+                      >25:00</text>
+                      <!-- label below time inside SVG -->
+                      <text
+                        x="100" y="120"
+                        text-anchor="middle"
+                        font-size="11"
+                        fill="#666"
+                        id="timer-svg-label"
+                      >Focus Session</text>
+                    </svg>
+                  </div>
                   <div class="pomodoro-controls">
                     <button class="pomodoro-btn primary" id="pomodoro-start">Start</button>
                     <button class="pomodoro-btn secondary" id="pomodoro-reset">Reset</button>
+                  </div>
+                  <div class="pomodoro-break-controls">
+                    <button class="pomodoro-break-btn" id="pomodoro-short-break">Short Break (5m)</button>
+                    <button class="pomodoro-break-btn" id="pomodoro-long-break">Long Break (15m)</button>
+                  </div>
+                  <div class="pomodoro-settings">
+                    <span class="settings-label">FOCUS</span>
+                    <input type="number" id="timer-focus-input" min="1" max="120" value="25"/>
+                    <span class="settings-label">BREAK</span>
+                    <input type="number" id="timer-break-input" min="1" max="60" value="5"/>
+                    <button class="settings-apply-btn" id="timer-settings-apply">Apply</button>
+                    <span class="settings-saved" id="settings-saved">✓ saved</span>
+                  </div>
+                  <div class="pomodoro-resume-banner" id="pomodoro-resume-banner">
+                    <span class="resume-text" id="resume-text">Unfinished session: 14min — Resume or Log it</span>
+                    <div class="resume-actions">
+                      <button class="pomodoro-btn small" id="pomodoro-resume">Resume</button>
+                      <button class="pomodoro-btn small" id="pomodoro-log-it">Log it</button>
+                    </div>
                   </div>
                   <div class="pomodoro-sessions">
                     <div class="sessions-label">Sessions Today</div>
@@ -2132,8 +3551,12 @@
           </svg>
         </div>
         <div class="chat-info">
-          <h3>ORBIT</h3>
+          <h3>ORBIT AI</h3>
           <span>still here with you</span>
+        </div>
+        <div class="doom-indicator" id="chat-doom-indicator">
+          <span class="doom-percent" id="chat-doom-percent">0%</span>
+          <span class="doom-status-dot" id="chat-doom-dot"></span>
         </div>
         <button type="button" class="chat-toggle-btn" id="chat-panel-toggle" aria-label="Hide chat" title="Hide chat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2289,6 +3712,48 @@
     <button id="test-simulate-days">Simulate 3 days passed</button>
     <button id="test-log-progress">Log 2hrs progress</button>
     <button id="test-reset">Reset all test data</button>
+  </div>
+
+  <!-- Stakes Onboarding Overlay -->
+  <div class="stakes-onboarding-overlay" id="stakes-onboarding-overlay">
+    <div class="stakes-onboarding-content">
+      <div class="stakes-step" id="stakes-step-1">
+        <h2>What's actually at stake</h2>
+        <p class="stakes-question">Before we track anything — what happens to your life if you don't achieve your main goal this year?</p>
+        <textarea class="stakes-textarea" id="stakes-answer-1" placeholder="be honest, this stays private"></textarea>
+        <div class="stakes-actions">
+          <button class="stakes-btn" id="stakes-continue-1">Continue →</button>
+          <button class="stakes-skip" id="stakes-skip-1">Skip for now</button>
+        </div>
+      </div>
+      <div class="stakes-step" id="stakes-step-2" style="display: none;">
+        <h2>What's actually at stake</h2>
+        <p class="stakes-question">Who in your life would be affected if you fail?</p>
+        <textarea class="stakes-textarea" id="stakes-answer-2" placeholder="be honest, this stays private"></textarea>
+        <div class="stakes-actions">
+          <button class="stakes-btn" id="stakes-continue-2">Continue →</button>
+          <button class="stakes-skip" id="stakes-skip-2">Skip for now</button>
+        </div>
+      </div>
+      <div class="stakes-step" id="stakes-step-3" style="display: none;">
+        <h2>What's actually at stake</h2>
+        <p class="stakes-question">What does your life look like in 3 years if you keep going at your current pace — honestly?</p>
+        <textarea class="stakes-textarea" id="stakes-answer-3" placeholder="be honest, this stays private"></textarea>
+        <div class="stakes-actions">
+          <button class="stakes-btn" id="stakes-continue-3">Continue →</button>
+          <button class="stakes-skip" id="stakes-skip-3">Skip for now</button>
+        </div>
+      </div>
+      <div class="stakes-step" id="stakes-step-4" style="display: none;">
+        <h2>What's actually at stake</h2>
+        <p class="stakes-question">What does it look like if you actually finish what you're building?</p>
+        <textarea class="stakes-textarea" id="stakes-answer-4" placeholder="be honest, this stays private"></textarea>
+        <div class="stakes-actions">
+          <button class="stakes-btn" id="stakes-finish">Finish — Enter ORBIT</button>
+          <button class="stakes-skip" id="stakes-skip-4">Skip for now</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="/orbit-app.js"></script>

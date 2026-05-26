@@ -168,6 +168,188 @@
   letter-spacing: 0.02em;
 }
 
+/* ========== LEVEL DISPLAY ========== */
+.level-display {
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  margin: 8px 0;
+  width: 100%;
+}
+.level-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 2px;
+}
+.level-icon {
+  font-size: 14px;
+}
+.level-title {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+.level-subtitle {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  color: #7A7A88;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+.level-bar-wrap {
+  height: 3px;
+  background: #1a1a1f;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+.level-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s ease;
+}
+.level-pts {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  color: #3A3A45;
+  text-align: right;
+}
+
+/* ========== LEVEL UP ANIMATION ========== */
+.levelup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: levelup-in 0.4s ease,
+             levelup-out 0.4s ease 2.1s forwards;
+}
+.levelup-content {
+  text-align: center;
+}
+.levelup-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: levelup-pulse 0.6s ease infinite alternate;
+}
+.levelup-tag {
+  font-family: monospace;
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: #7A7A88;
+  margin-bottom: 8px;
+}
+.levelup-title {
+  font-size: 48px;
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+.levelup-sub {
+  font-family: monospace;
+  font-size: 14px;
+  color: #7A7A88;
+  margin-bottom: 20px;
+}
+.levelup-pts {
+  font-family: monospace;
+  font-size: 11px;
+  color: #34D399;
+  letter-spacing: 0.1em;
+}
+@keyframes levelup-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes levelup-out {
+  from { opacity: 1; }
+  to   { opacity: 0; pointer-events: none; }
+}
+@keyframes levelup-pulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.15); }
+}
+
+/* ========== LEVEL CARD ========== */
+.level-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.level-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.level-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.level-card-icon {
+  font-size: 24px;
+}
+.level-card-title {
+  font-family: var(--font-mono, monospace);
+  font-size: 18px;
+  font-weight: 700;
+  flex: 1;
+}
+.level-card-pts {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.level-card-sub {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: #7A7A88;
+  margin-left: 34px;
+}
+.level-card-bar-wrap {
+  height: 4px;
+  background: #1a1a1f;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-left: 34px;
+}
+.level-card-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s ease;
+}
+.level-card-next {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 34px;
+}
+.level-card-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+.level-dot {
+  font-size: 20px;
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+}
+.level-dot.current {
+  opacity: 1;
+  transform: scale(1.2);
+}
+.level-dot.past {
+  opacity: 0.6;
+}
+
 /* ========== ORBIT SCORE HUD ========== */
 .orbit-score-card {
   grid-column: 1 / -1;
