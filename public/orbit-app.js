@@ -1,5 +1,11 @@
 // ORBIT application logic
 (function () {
+  let dayPlannerClockInterval = null;
+  let dayPlannerUpdateInterval = null;
+
+  const MOCK_MODE = true;
+  // Change to false when using real API key
+
   const ORBIT_LEVELS = [
     {
       min: 0, max: 99,
@@ -83,6 +89,10 @@
     CHAT_OPEN: 'orbit_chat_open',
     STAKES: 'orbit_stakes',
     DOOM_RECOMMENDATIONS: 'orbit_doom_recommendations',
+    WEEKLY_TEMPLATE: 'orbit_weekly_template',
+    TODAY_OVERRIDE: 'orbit_today_override',
+    QUICK_TASKS: 'orbit_quick_tasks',
+    TIMETABLE_BLOCKS: 'orbit_timetable_blocks',
   };
 
   const DOOM_RGBA = {
@@ -92,6 +102,234 @@
     danger: '239, 68, 68',
     critical: '220, 38, 38',
   };
+
+  // ============================================================================
+  // TIMETABLE SYSTEM DATA STRUCTURES
+  // ============================================================================
+
+  const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+  // Default weekly template structure
+  const DEFAULT_WEEKLY_TEMPLATE = {
+    monday: [],
+    tuesday: [],
+    wednesday: [],
+    thursday: [],
+    friday: [],
+    saturday: [],
+    sunday: []
+  };
+
+  // ============================================================================
+  // TIMETABLE STORAGE LAYER
+  // ============================================================================
+
+  function getWeeklyTemplate() {
+    return loadData(STORAGE_KEYS.WEEKLY_TEMPLATE, DEFAULT_WEEKLY_TEMPLATE);
+  }
+
+  function saveWeeklyTemplate(template) {
+    saveData(STORAGE_KEYS.WEEKLY_TEMPLATE, template);
+  }
+
+  function getTodayOverride() {
+    const override = loadData(STORAGE_KEYS.TODAY_OVERRIDE, null);
+    if (!override) return null;
+
+    // Check if override is from today
+    const today = new Date().toDateString();
+    if (override.date !== today) {
+      // Override expired, clear it
+      localStorage.removeItem(STORAGE_KEYS.TODAY_OVERRIDE);
+      return null;
+    }
+
+    return override;
+  }
+
+  function saveTodayOverride(override) {
+    override.date = new Date().toDateString();
+    saveData(STORAGE_KEYS.TODAY_OVERRIDE, override);
+  }
+
+  function clearTodayOverride() {
+    localStorage.removeItem(STORAGE_KEYS.TODAY_OVERRIDE);
+  }
+
+  function getQuickTasks() {
+    return loadData(STORAGE_KEYS.QUICK_TASKS, []);
+  }
+
+  function saveQuickTasks(tasks) {
+    saveData(STORAGE_KEYS.QUICK_TASKS, tasks);
+  }
+
+  function getTimetableBlocks() {
+    return loadData(STORAGE_KEYS.TIMETABLE_BLOCKS, []);
+  }
+
+  function saveTimetableBlocks(blocks) {
+    saveData(STORAGE_KEYS.TIMETABLE_BLOCKS, blocks);
+  }
+
+  // ============================================================================
+  // TIMETABLE PARSING FUNCTIONS
+  // ============================================================================
+
+  function parseTimeInput(timeStr) {
+    // Parse various time formats: "6AM", "06:00", "6:00 AM", etc.
+    const cleaned = timeStr.trim().toUpperCase();
+    
+    // Handle "6AM" format
+    if (cleaned.match(/^\d+AM$/)) {
+      const hours = parseInt(cleaned.replace('AM', ''));
+      return `${hours.toString().padStart(2, '0')}:00`;
+    }
+    
+    // Handle "6PM" format
+    if (cleaned.match(/^\d+PM$/)) {
+      const hours = parseInt(cleaned.replace('PM', '')) + 12;
+      return `${hours.toString().padStart(2, '0')}:00`;
+    }
+    
+    // Handle "06:00" format
+    if (cleaned.match(/^\d{1,2}:\d{2}$/)) {
+      return cleaned;
+    }
+    
+    // Handle "6:00 AM" format
+    if (cleaned.match(/^\d{1,2}:\d{2}\s*AM$/)) {
+      const parts = cleaned.replace('AM', '').trim().split(':');
+      return `${parts[0].padStart(2, '0')}:${parts[1]}`;
+    }
+    
+    // Handle "6:00 PM" format
+    if (cleaned.match(/^\d{1,2}:\d{2}\s*PM$/)) {
+      const parts = cleaned.replace('PM', '').trim().split(':');
+      const hours = parseInt(parts[0]) + 12;
+      return `${hours.toString().padStart(2, '0')}:${parts[1]}`;
+    }
+    
+    return null;
+  }
+
+  function parseTimetableText(text) {
+    const tasks = [];
+    const lines = text.split('\n').filter(line => line.trim());
+    
+    for (const line of lines) {
+      // Try different separators: |, -, →
+      let parts;
+      
+      if (line.includes('|')) {
+        parts = line.split('|').map(p => p.trim());
+      } else if (line.includes('→')) {
+        parts = line.split('→').map(p => p.trim());
+      } else if (line.includes('-')) {
+        parts = line.split('-').map(p => p.trim());
+      } else {
+        continue;
+      }
+      
+      if (parts.length >= 2) {
+        const timeRange = parts[0];
+        const taskName = parts.slice(1).join(' ');
+        
+        // Parse time range
+        const timeParts = timeRange.split(/[-–]/).map(t => t.trim());
+        
+        if (timeParts.length === 2) {
+          const startTime = parseTimeInput(timeParts[0]);
+          const endTime = parseTimeInput(timeParts[1]);
+          
+          if (startTime && endTime) {
+            tasks.push({
+              id: generateId(),
+              name: taskName,
+              startTime,
+              endTime,
+              color: '#f97316'
+            });
+          }
+        }
+      }
+    }
+    
+    return tasks;
+  }
+
+  // ============================================================================
+  // TIMETABLE DISPLAY FUNCTIONS
+  // ============================================================================
+
+  function getCurrentWeekday() {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[new Date().getDay()];
+  }
+
+  function getTodayTimetable() {
+    const override = getTodayOverride();
+    if (override && override.tasks) {
+      return override.tasks;
+    }
+    
+    const template = getWeeklyTemplate();
+    const today = getCurrentWeekday();
+    return template[today] || [];
+  }
+
+  function getActiveTask() {
+    const tasks = getTodayTimetable();
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    return tasks.find(task => {
+      return currentTime >= task.startTime && currentTime < task.endTime;
+    });
+  }
+
+  function getNextTask() {
+    const tasks = getTodayTimetable();
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    return tasks.find(task => {
+      return task.startTime > currentTime;
+    });
+  }
+
+  // ============================================================================
+  // TODAY OVERRIDE SYSTEM
+  // ============================================================================
+
+  function createTodayOverride(tasks) {
+    const override = {
+      tasks: tasks,
+      date: new Date().toDateString()
+    };
+    saveTodayOverride(override);
+  }
+
+  function hasTodayOverride() {
+    return getTodayOverride() !== null;
+  }
+
+  function clearTodayOverrideIfExpired() {
+    const override = getTodayOverride();
+    if (!override) return;
+
+    const today = new Date().toDateString();
+    if (override.date !== today) {
+      clearTodayOverride();
+    }
+  }
+
+  // Check for midnight reset every minute
+  function startMidnightChecker() {
+    setInterval(() => {
+      clearTodayOverrideIfExpired();
+    }, 60000); // Check every minute
+  }
 
   const WELCOME_MESSAGE =
     "You made it here. That counts. Dump whatever's actually in your head — no performance, no bullet points required.";
@@ -1972,8 +2210,11 @@
     // Update onboarding banner
     updateOnboardingBanner();
 
-    // Update stakes trigger card
-    updateStakesTriggerCard(doom);
+    // Update stakes fear card
+    const stakesCardContainer = document.getElementById('stakes-fear-card-container');
+    if (stakesCardContainer) {
+      stakesCardContainer.innerHTML = renderStakesFearCard();
+    }
 
     // Update due today section
     renderDueToday();
@@ -2038,60 +2279,184 @@
     }
   }
 
-  function updateStakesTriggerCard(doom) {
-    const card = document.getElementById('stakes-trigger-card');
-    if (!card) return;
+  function renderStakesFearCard() {
+    const doom = calculateDoom();
+    if (doom < 50) return '';
 
-    // Check if temporarily dismissed
-    const dismissedUntil = localStorage.getItem('stakes_trigger_dismissed_until');
-    if (dismissedUntil) {
-      const until = parseInt(dismissedUntil, 10);
-      if (Date.now() < until) {
-        card.classList.remove('visible');
-        return;
-      } else {
-        localStorage.removeItem('stakes_trigger_dismissed_until');
-      }
+    // Check if dismissed recently
+    const dismissedUntil = localStorage.getItem('stakes_card_dismissed_until');
+    if (dismissedUntil && Date.now() < parseInt(dismissedUntil)) return '';
+
+    // Load stakes data
+    const stakes = JSON.parse(localStorage.getItem('orbit_stakes') || '{}');
+    const lifeContext = stakes.life_context || {};
+
+    // Get highest risk goal
+    const riskGoal = getHighestRiskGoal ? getHighestRiskGoal() : (goals && goals[0]) || null;
+
+    // Get goal-specific stake if exists
+    const goalStake = riskGoal && stakes.goal_stakes ? stakes.goal_stakes[riskGoal.id] : null;
+
+    // Build fear message from their own words
+    // Priority: goal stake → life context → generic
+    let fearLine = '';
+    let consequenceLine = '';
+    let whoLine = '';
+
+    if (goalStake && goalStake.personal_stake) {
+      fearLine = goalStake.personal_stake;
+    } else if (lifeContext.biggest_fear) {
+      fearLine = lifeContext.biggest_fear;
+    } else if (lifeContext.what_failure_looks_like) {
+      fearLine = lifeContext.what_failure_looks_like;
     }
 
-    // Only show if doom > 50% and stakes onboarding is complete
-    if (doom <= 50 || !stakes.onboarding_complete) {
-      card.classList.remove('visible');
-      return;
+    if (goalStake && goalStake.consequence_if_missed) {
+      consequenceLine = goalStake.consequence_if_missed;
+    } else if (lifeContext.what_failure_looks_like) {
+      consequenceLine = lifeContext.what_failure_looks_like;
     }
 
-    // Find the goal with the nearest deadline
-    const now = new Date();
-    const goalsWithDeadlines = goals
-      .filter((g) => g.deadline && isValidDate(new Date(g.deadline)))
-      .map((g) => ({
-        ...g,
-        deadlineDate: new Date(g.deadline),
-        daysLeft: Math.ceil((new Date(g.deadline) - now) / 86400000),
-      }))
-      .filter((g) => g.daysLeft > 0)
-      .sort((a, b) => a.daysLeft - b.daysLeft);
-
-    if (goalsWithDeadlines.length === 0) {
-      card.classList.remove('visible');
-      return;
+    if (goalStake && goalStake.who_affected) {
+      whoLine = goalStake.who_affected;
+    } else if (lifeContext.who_depends_on_you) {
+      whoLine = lifeContext.who_depends_on_you;
     }
 
-    const nearestGoal = goalsWithDeadlines[0];
-    const daysEl = document.getElementById('stakes-days');
-    const quoteEl = document.getElementById('stakes-quote');
+    // Days left on highest risk goal
+    const daysLeft = riskGoal && riskGoal.deadline ? Math.ceil((new Date(riskGoal.deadline) - new Date()) / 86400000) : null;
 
-    if (daysEl) {
-      daysEl.textContent = `${nearestGoal.daysLeft} days until your ${nearestGoal.title} deadline.`;
+    // If no stakes filled yet — show prompt to fill them
+    const hasStakes = fearLine || consequenceLine;
+
+    if (!hasStakes) {
+      return `
+      <div class="stakes-fear-card no-stakes" id="stakes-fear-card">
+        <div class="sfc-header">
+          <span class="sfc-icon">⚠</span>
+          <span class="sfc-title">
+            DOOM IS ${doom}% — BUT WHY DOES IT MATTER?
+          </span>
+          <button class="sfc-dismiss" onclick="dismissStakesCard()">×</button>
+        </div>
+        <p class="sfc-body">
+          You haven't told ORBIT what's actually at stake for you. The pressure is real — but it hits harder when it's personal.
+        </p>
+        <button class="sfc-cta" onclick="openStakesOnboarding()">
+          Tell ORBIT what you're risking →
+        </button>
+      </div>`;
     }
 
-    if (quoteEl) {
-      // Use their own words from stakes onboarding
-      const quote = stakes.life_context.what_failure_looks_like || stakes.life_context.biggest_fear || '';
-      quoteEl.textContent = quote ? `You said:\n'${quote}'` : '';
-    }
+    // Full stakes card with their own words
+    return `
+    <div class="stakes-fear-card" id="stakes-fear-card">
+      <div class="sfc-header">
+        <span class="sfc-icon">⚠</span>
+        <span class="sfc-title">WHAT'S ACTUALLY AT STAKE</span>
+        <button class="sfc-dismiss" onclick="dismissStakesCard()">×</button>
+      </div>
 
-    card.classList.add('visible');
+      ${riskGoal ? `
+      <div class="sfc-goal-line">
+        <span class="sfc-goal-name">${riskGoal.title}</span>
+        ${daysLeft !== null ? `
+        <span class="sfc-days ${daysLeft < 0 ? 'overdue' : daysLeft < 3 ? 'urgent' : ''}">
+          ${daysLeft < 0 ? Math.abs(daysLeft) + 'd overdue' : daysLeft + 'd left'}
+        </span>` : ''}
+      </div>` : ''}
+
+      ${fearLine ? `
+      <div class="sfc-fear-block">
+        <div class="sfc-label">YOU SAID</div>
+        <div class="sfc-quote">"${fearLine}"</div>
+      </div>` : ''}
+
+      ${consequenceLine && consequenceLine !== fearLine ? `
+      <div class="sfc-consequence">
+        <div class="sfc-label">IF THIS FAILS</div>
+        <div class="sfc-consequence-text">
+          ${consequenceLine}
+        </div>
+      </div>` : ''}
+
+      ${whoLine ? `
+      <div class="sfc-who">
+        <span class="sfc-who-icon">👤</span>
+        <span class="sfc-who-text">
+          ${whoLine} is affected by this.
+        </span>
+      </div>` : ''}
+
+      <div class="sfc-footer">
+        <button class="sfc-action" onclick="handleStakesAction(${doom})">
+          I know. Tell me what to do now →
+        </button>
+      </div>
+    </div>`;
+  }
+
+  function dismissStakesCard() {
+    // Dismiss for 4 hours
+    const until = Date.now() + (4 * 60 * 60 * 1000);
+    localStorage.setItem('stakes_card_dismissed_until', until.toString());
+    const card = document.getElementById('stakes-fear-card');
+    if (card) {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(-8px)';
+      card.style.transition = 'all 0.3s';
+      setTimeout(() => card.remove(), 300);
+    }
+  }
+
+  function handleStakesAction(doomPct) {
+    // 1. Pre-fill the chat input
+    const chatInput = document.querySelector(
+      'textarea[id*="chat"], input[id*="chat"], ' +
+      'textarea[id*="message"], #chat-input, ' +
+      '#chatInput, #chat-in, #message-input'
+    );
+    
+    const message = `Doom is at ${doomPct}%. ` +
+      `I know what I am risking. ` +
+      `Tell me exactly what I need to do ` +
+      `in the next 2 hours to turn this around.`;
+    
+    if (chatInput) {
+      chatInput.value = message;
+      // Trigger input event so any listeners fire
+      chatInput.dispatchEvent(new Event('input'));
+    }
+    
+    // 2. Open the chat panel
+    // Try all possible open functions
+    if (typeof openChat === 'function') openChat();
+    else if (typeof toggleChat === 'function') toggleChat();
+    else if (typeof showChat === 'function') showChat();
+    else if (typeof openChatPanel === 'function') openChatPanel();
+    else if (typeof setChatOpen === 'function') setChatOpen(true);
+    else {
+      // Fallback: find and click the Ask ORBIT button
+      const askBtn = document.querySelector(
+        '[class*="ask-orbit"], [id*="chat-toggle"], ' +
+        'button[class*="chat"]'
+      );
+      if (askBtn) askBtn.click();
+    }
+    
+    // 3. Auto-send after 300ms if input was filled
+    if (chatInput) {
+      setTimeout(() => {
+        const sendBtn = document.querySelector(
+          'button[id*="send"], button[class*="send"], ' +
+          '#chat-send, #sendMessage'
+        );
+        if (sendBtn) sendBtn.click();
+      }, 400);
+    }
+    
+    // 4. Dismiss the stakes card
+    dismissStakesCard();
   }
 
   function renderDueToday() {
@@ -2256,6 +2621,7 @@
     goals: { title: 'Goals', subtitle: 'Your short-term targets' },
     vision: { title: 'Life Vision', subtitle: 'The big picture' },
     overview: { title: 'Overview', subtitle: 'Your life at a glance' },
+    dayplanner: { title: 'Day Planner', subtitle: 'Plan your daily schedule' },
   };
 
   function setDateSubtitle() {
@@ -2290,6 +2656,13 @@
       renderOverview();
       window.dispatchEvent(new CustomEvent('orbit:overview'));
     }
+
+    if (screen === 'dayplanner') {
+      if (typeof initDayPlanner === 'function') {
+        initDayPlanner();
+      }
+    }
+
     window.dispatchEvent(new CustomEvent('orbit:refresh'));
   }
 
@@ -2380,6 +2753,11 @@
     resetDailyChecklistIfNewDay();
     renderDailyChecklist();
     renderTodayChecklist();
+    // Update stakes fear card
+    const stakesCardContainer = document.getElementById('stakes-fear-card-container');
+    if (stakesCardContainer) {
+      stakesCardContainer.innerHTML = renderStakesFearCard();
+    }
     window.dispatchEvent(new CustomEvent('orbit:refresh'));
   }
 
@@ -3454,6 +3832,11 @@ RULES:
       { role: 'user', content: userMessage },
     ];
 
+    if (MOCK_MODE) {
+      await new Promise(r => setTimeout(r, 800));
+      return getMockResponse(messagesForApi);
+    }
+
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3478,6 +3861,41 @@ RULES:
     }
 
     return data.message;
+  }
+
+  function getMockResponse(messages) {
+    const lastMsg = messages[messages.length - 1].content.toLowerCase();
+    const doom = (typeof calculateDoom === 'function') ? calculateDoom() : 0;
+
+    if (lastMsg.includes('risk') || lastMsg.includes('stake')) {
+      return "I know what you're working toward and what's at stake. Your goals are real — the consequences are too. What's one thing you can do in the next hour?";
+    }
+
+    if (lastMsg.includes('behind') || lastMsg.includes('doom')) {
+      return doom >= 75
+        ? "You're critically behind. Not tomorrow's problem — right now's problem. Open your goals and tell me which one we fix first."
+        : "You're falling behind but it's recoverable. What got in the way today?";
+    }
+
+    if (lastMsg.includes('plan') || lastMsg.includes('quest') || lastMsg.includes('generate')) {
+      return `[{"title":"Study Session","subject":"General","total_hours":4,"daily_hours_target":2,"sessions_per_day":4,"priority":2,"deadline_days":7,"description":"Focused study block"}]`;
+    }
+
+    if (doom >= 75) {
+      return "Your doom is critical right now. I'm not going to pretend otherwise. What's the one thing that would move the needle today?";
+    }
+
+    if (doom >= 50) {
+      return "Things are slipping. Not gone — but slipping. What do you actually need right now?";
+    }
+
+    const casual = [
+      "I'm here. What's on your mind?",
+      "You made it. That counts. What are we working on today?",
+      "Still here with you. What's real right now?",
+      "Talk to me. Goals or not — whatever you need.",
+    ];
+    return casual[Math.floor(Math.random() * casual.length)];
   }
 
   chatForm.addEventListener('submit', async (e) => {
@@ -3698,4 +4116,812 @@ RULES:
 
   // Check stakes onboarding on app initialization
   checkStakesOnboarding();
+
+  // Show mock badge if in mock mode
+  if (MOCK_MODE) {
+    const mockBadge = document.getElementById('mock-badge');
+    if (mockBadge) {
+      mockBadge.style.display = 'inline';
+    }
+  }
+
+  // ============================================================================
+  // DAY PLANNER SYSTEM
+  // ============================================================================
+
+  const DAY_PLANNER_STORAGE_KEY = 'orbit_dayplanner_data';
+
+  // Day Planner state (Simplified - Daily Execution Only)
+  let dayPlannerState = {
+    selectedDay: null, // automatically set to today
+    todayOverride: null, // override task for today only
+    overrideDate: null // date string for override
+  };
+
+  // Load Day Planner data from localStorage
+  function loadDayPlannerData() {
+    try {
+      const data = localStorage.getItem(DAY_PLANNER_STORAGE_KEY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        dayPlannerState = { ...dayPlannerState, ...parsed };
+      }
+    } catch (err) {
+      console.error('Failed to load Day Planner data:', err);
+    }
+  }
+
+  // Save Day Planner data to localStorage
+  function saveDayPlannerData() {
+    try {
+      localStorage.setItem(DAY_PLANNER_STORAGE_KEY, JSON.stringify(dayPlannerState));
+    } catch (err) {
+      console.error('Failed to save Day Planner data:', err);
+    }
+  }
+
+  // Get current weekday name (lowercase)
+  function getCurrentWeekday() {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[new Date().getDay()];
+  }
+
+  // Format time for display (Day Planner specific)
+  function formatTimeDisplay(timeStr) {
+    // Handle number input (e.g., 1500)
+    if (typeof timeStr === "number") {
+      timeStr = timeStr.toString();
+      if (timeStr.length === 4) {
+        timeStr = timeStr.slice(0, 2) + ":" + timeStr.slice(2);
+      }
+    }
+
+    if (!timeStr || typeof timeStr !== "string") {
+      console.error("Invalid timeStr:", timeStr);
+      return "--:--";
+    }
+
+    const [hours, minutes] = timeStr.split(":").map(Number);
+
+    const period = hours >= 12 ? "PM" : "AM";
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes.toString().padStart(2, "0");
+
+    return `${displayHours}:${displayMinutes} ${period}`;
+  }
+
+  // Calculate duration between two times
+  function calculateDuration(startTime, endTime) {
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    
+    const startTotalMinutes = startHours * 60 + startMinutes;
+    const endTotalMinutes = endHours * 60 + endMinutes;
+    
+    let durationMinutes = endTotalMinutes - startTotalMinutes;
+    if (durationMinutes < 0) {
+      durationMinutes += 24 * 60; // Handle overnight tasks
+    }
+    
+    const hours = Math.floor(durationMinutes / 60);
+    const minutes = durationMinutes % 60;
+    
+    if (hours > 0 && minutes > 0) {
+      return `${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else {
+      return `${minutes}m`;
+    }
+  }
+
+  // Get current time in HH:MM format
+  function getCurrentTime() {
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  // Get current time in HH:MM:SS format for clock
+  function getCurrentClockTime() {
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+  }
+
+  // Check if current time is within task time range
+  function isTimeInRange(currentTime, startTime, endTime) {
+    const [currentHours, currentMinutes] = currentTime.split(':').map(Number);
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    
+    const currentTotal = currentHours * 60 + currentMinutes;
+    const startTotal = startHours * 60 + startMinutes;
+    const endTotal = endHours * 60 + endMinutes;
+    
+    if (endTotal > startTotal) {
+      return currentTotal >= startTotal && currentTotal < endTotal;
+    } else {
+      // Handle overnight tasks
+      return currentTotal >= startTotal || currentTotal < endTotal;
+    }
+  }
+
+  // Get tasks for current day (with override support)
+  function getTodayTasks() {
+    // Check if there's a today override
+    if (dayPlannerState.todayOverride && dayPlannerState.overrideDate === new Date().toDateString()) {
+      return [dayPlannerState.todayOverride];
+    }
+    
+    // Otherwise, get from weekly template
+    const today = getCurrentWeekday();
+    const weeklyTemplate = getWeeklyTemplate();
+    return weeklyTemplate[today] || [];
+  }
+
+  // Sort tasks by start time
+  function sortTasks(tasks) {
+    return [...tasks].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }
+
+  // Determine task status based on current time
+  function getTaskStatus(task, currentTime) {
+    if (isTimeInRange(currentTime, task.startTime, task.endTime)) {
+      return 'active';
+    } else if (task.startTime > currentTime) {
+      return 'upcoming';
+    } else {
+      return 'completed';
+    }
+  }
+
+  // Update live clock
+  function updateDayPlannerClock() {
+    const clockEl = document.getElementById('day-planner-live-clock');
+    if (clockEl) {
+      clockEl.textContent = getCurrentClockTime();
+    }
+  }
+
+  // Update date display
+  function updateDayPlannerDate() {
+    const dateEl = document.getElementById('day-planner-full-date');
+    if (dateEl) {
+      const now = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      dateEl.textContent = now.toLocaleDateString('en-US', options);
+    }
+  }
+
+  // Update current task display
+  function updateCurrentTask() {
+    const nameEl = document.getElementById('day-planner-current-name');
+    const timeEl = document.getElementById('day-planner-current-time');
+    const remainingEl = document.getElementById('day-planner-current-remaining');
+    
+    if (!nameEl || !timeEl) return;
+    
+    const tasks = getTodayTasks();
+    const currentTime = getCurrentTime();
+    
+    const activeTask = tasks.find(task => isTimeInRange(currentTime, task.startTime, task.endTime));
+    
+    if (activeTask) {
+      nameEl.textContent = activeTask.name;
+      timeEl.textContent = `${formatTimeDisplay(activeTask.startTime)} → ${formatTimeDisplay(activeTask.endTime)}`;
+      const remaining = calculateRemainingTime(activeTask.endTime);
+      if (remainingEl) {
+        remainingEl.textContent = `${remaining} remaining`;
+      }
+    } else {
+      nameEl.textContent = 'No active task';
+      timeEl.textContent = '';
+      if (remainingEl) {
+        remainingEl.textContent = '';
+      }
+    }
+
+    // Update up next
+    updateUpNext();
+  }
+
+  // Update up next display
+  function updateUpNext() {
+    const nameEl = document.getElementById('day-planner-up-next-name');
+    const timeEl = document.getElementById('day-planner-up-next-time');
+    
+    if (!nameEl || !timeEl) return;
+    
+    const tasks = getTodayTasks();
+    const currentTime = getCurrentTime();
+    
+    // Find next task
+    const nextTask = tasks.find(task => task.startTime > currentTime);
+    
+    if (nextTask) {
+      nameEl.textContent = nextTask.name;
+      const timeUntil = calculateTimeUntil(nextTask.startTime);
+      timeEl.textContent = `in ${timeUntil}`;
+    } else {
+      nameEl.textContent = 'No upcoming task';
+      timeEl.textContent = '';
+    }
+  }
+
+  // Calculate time until a task starts
+  function calculateTimeUntil(startTime) {
+    const now = new Date();
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    
+    const startTotal = startHours * 60 + startMinutes;
+    const currentTotal = now.getHours() * 60 + now.getMinutes();
+    
+    let minutesUntil = startTotal - currentTotal;
+    if (minutesUntil < 0) {
+      minutesUntil += 24 * 60; // Next day
+    }
+    
+    const hours = Math.floor(minutesUntil / 60);
+    const mins = minutesUntil % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    } else {
+      return `${mins}m`;
+    }
+  }
+
+  // Calculate remaining time for active task
+  function calculateRemainingTime(endTime) {
+    const now = new Date();
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    
+    const endTotal = endHours * 60 + endMinutes;
+    const currentTotal = now.getHours() * 60 + now.getMinutes();
+    
+    let remainingMinutes = endTotal - currentTotal;
+    if (remainingMinutes < 0) {
+      remainingMinutes += 24 * 60;
+    }
+    
+    const hours = Math.floor(remainingMinutes / 60);
+    const minutes = remainingMinutes % 60;
+    
+    if (hours > 0 && minutes > 0) {
+      return `${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else {
+      return `${minutes}m`;
+    }
+  }
+
+  // Render timeline (Simplified - No editing controls)
+  function renderDayPlannerTimeline() {
+    const timelineEl = document.getElementById('day-planner-timeline');
+    if (!timelineEl) return;
+    
+    const tasks = sortTasks(getTodayTasks());
+    const currentTime = getCurrentTime();
+    
+    if (tasks.length === 0) {
+      timelineEl.innerHTML = `
+        <div class="day-planner-empty-state" style="text-align: center; padding: 40px; color: var(--text-muted);">
+          <p>No tasks scheduled for today</p>
+          <p style="font-size: 13px; margin-top: 8px;">Use "Edit Weekly System" to set up your schedule</p>
+        </div>
+      `;
+      return;
+    }
+    
+    timelineEl.innerHTML = tasks.map(task => {
+      const status = getTaskStatus(task, currentTime);
+      const duration = calculateDuration(task.startTime, task.endTime);
+      
+      return `
+        <div class="day-planner-task ${status}" data-task-id="${task.id}">
+          <div class="day-planner-task-time">
+            <span>${formatTimeDisplay(task.startTime)}</span>
+            <span>${formatTimeDisplay(task.endTime)}</span>
+          </div>
+          <div class="day-planner-task-content">
+            <div class="day-planner-task-name">${escapeHtml(task.name)}</div>
+            ${task.description ? `<div class="day-planner-task-description">${escapeHtml(task.description)}</div>` : ''}
+            <div class="day-planner-task-duration">${duration}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    // Scroll to active task
+    const activeTaskEl = timelineEl.querySelector('.day-planner-task.active');
+    if (activeTaskEl) {
+      activeTaskEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  // ============================================================================
+  // WEEKLY TIMETABLE EDITOR FUNCTIONS
+  // ============================================================================
+
+  let weeklyEditorState = {
+    activeMode: 'text',
+    selectedDay: 'monday',
+    parsedTasks: [],
+    currentTemplate: null
+  };
+
+  // Open weekly timetable editor
+  function openWeeklyTimetableEditor() {
+    const modal = document.getElementById('weekly-timetable-modal');
+    if (!modal) return;
+
+    // Load current template
+    weeklyEditorState.currentTemplate = getWeeklyTemplate();
+    
+    // Show modal
+    modal.classList.add('active');
+    
+    // Initialize text input with current template
+    initializeTextInput();
+  }
+
+  // Close weekly timetable editor
+  function closeWeeklyTimetableEditor() {
+    const modal = document.getElementById('weekly-timetable-modal');
+    if (!modal) return;
+
+    modal.classList.remove('active');
+  }
+
+  // Initialize text input with current template
+  function initializeTextInput() {
+    const textInput = document.getElementById('weekly-text-input');
+    if (!textInput) return;
+
+    let text = '';
+    for (const day of WEEKDAYS) {
+      const tasks = weeklyEditorState.currentTemplate[day] || [];
+      if (tasks.length > 0) {
+        text += `${day.toUpperCase()}\n`;
+        for (const task of tasks) {
+          text += `${task.startTime}-${task.endTime} | ${task.name}\n`;
+        }
+        text += '\n';
+      }
+    }
+    
+    textInput.value = text.trim();
+  }
+
+  // Switch weekly editor mode
+  function switchWeeklyMode(mode) {
+    weeklyEditorState.activeMode = mode;
+
+    // Update tabs
+    document.querySelectorAll('.weekly-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.mode === mode);
+    });
+
+    // Update panels
+    document.querySelectorAll('.weekly-mode-panel').forEach(panel => {
+      panel.classList.remove('active');
+    });
+
+    const activePanel = document.getElementById(`weekly-mode-${mode}`);
+    if (activePanel) {
+      activePanel.classList.add('active');
+    }
+
+    // Update footer actions
+    document.querySelectorAll('.weekly-footer-actions').forEach(actions => {
+      actions.style.display = 'none';
+    });
+
+    const footerActions = document.getElementById(`weekly-footer-${mode}-actions`);
+    if (footerActions) {
+      footerActions.style.display = 'flex';
+    }
+  }
+
+  // Parse text input
+  function parseWeeklyTextInput() {
+    const textInput = document.getElementById('weekly-text-input');
+    if (!textInput) return;
+
+    const text = textInput.value;
+    const tasks = parseTimetableText(text);
+    
+    weeklyEditorState.parsedTasks = tasks;
+    
+    // Show preview (for now, just alert the count)
+    alert(`Parsed ${tasks.length} tasks from text input`);
+  }
+
+  // Save text input to template
+  function saveTextToTemplate() {
+    if (weeklyEditorState.parsedTasks.length === 0) {
+      alert('No tasks to save. Please parse the text first.');
+      return;
+    }
+
+    // For now, save all tasks to Monday (this will be improved)
+    const template = getWeeklyTemplate();
+    template.monday = weeklyEditorState.parsedTasks;
+    saveWeeklyTemplate(template);
+    
+    alert('Weekly template saved!');
+    closeWeeklyTimetableEditor();
+    
+    // Refresh day planner
+    renderDayPlannerTimeline();
+  }
+
+  // Copy day to all weekdays
+  function copyDayToAll(sourceDay) {
+    const template = getWeeklyTemplate();
+    const sourceTasks = template[sourceDay] || [];
+    
+    if (sourceTasks.length === 0) {
+      alert(`No tasks to copy from ${sourceDay}`);
+      return;
+    }
+
+    // Copy to all weekdays (monday-friday)
+    const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    for (const day of weekdays) {
+      template[day] = sourceTasks.map(task => ({
+        ...task,
+        id: generateId()
+      }));
+    }
+    
+    saveWeeklyTemplate(template);
+    alert(`Copied ${sourceDay} schedule to all weekdays`);
+    
+    // Refresh editor
+    weeklyEditorState.currentTemplate = template;
+    renderWeeklyTimeline(weeklyEditorState.selectedDay);
+  }
+
+  // Duplicate previous day
+  function duplicatePreviousDay(currentDay) {
+    const dayIndex = WEEKDAYS.indexOf(currentDay);
+    if (dayIndex === 0) {
+      alert('No previous day to duplicate');
+      return;
+    }
+    
+    const previousDay = WEEKDAYS[dayIndex - 1];
+    const template = getWeeklyTemplate();
+    const previousTasks = template[previousDay] || [];
+    
+    if (previousTasks.length === 0) {
+      alert(`No tasks to duplicate from ${previousDay}`);
+      return;
+    }
+
+    template[currentDay] = previousTasks.map(task => ({
+      ...task,
+      id: generateId()
+    }));
+    
+    saveWeeklyTemplate(template);
+    alert(`Duplicated ${previousDay} schedule to ${currentDay}`);
+    
+    // Refresh editor
+    weeklyEditorState.currentTemplate = template;
+    renderWeeklyTimeline(currentDay);
+  }
+
+  // Select day in visual mode
+  function selectWeeklyDay(day) {
+    weeklyEditorState.selectedDay = day;
+    
+    // Update buttons
+    document.querySelectorAll('.weekly-day-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.day === day);
+    });
+    
+    // Render timeline for selected day
+    renderWeeklyTimeline(day);
+  }
+
+  // Render weekly timeline for a specific day
+  function renderWeeklyTimeline(day) {
+    const timeline = document.getElementById('weekly-timeline');
+    if (!timeline) return;
+
+    // Safe default for currentTemplate
+    if (!weeklyEditorState.currentTemplate) {
+      console.error("weeklyTemplate missing, using safe default");
+      weeklyEditorState.currentTemplate = {
+        monday: [],
+        tuesday: [],
+        wednesday: [],
+        thursday: [],
+        friday: [],
+        saturday: [],
+        sunday: []
+      };
+    }
+
+    const tasks = weeklyEditorState.currentTemplate[day] || [];
+
+    timeline.innerHTML = '';
+
+    if (tasks.length === 0) {
+      timeline.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">No tasks scheduled for this day</div>';
+      return;
+    }
+
+    for (const task of tasks) {
+      const taskEl = document.createElement('div');
+      taskEl.className = 'weekly-timeline-task';
+      taskEl.innerHTML = `
+        <div class="weekly-task-time">${task.startTime} - ${task.endTime}</div>
+        <div class="weekly-task-name">${task.name}</div>
+      `;
+      timeline.appendChild(taskEl);
+    }
+  }
+
+  // Initialize weekly timetable editor
+  function initializeWeeklyTimetableEditor() {
+    // Close button
+    const closeBtn = document.getElementById('weekly-timetable-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeWeeklyTimetableEditor);
+    }
+
+    // Tab switching
+    document.querySelectorAll('.weekly-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        switchWeeklyMode(tab.dataset.mode);
+      });
+    });
+
+    // Day selector (now in toolbar, always visible)
+    document.querySelectorAll('.weekly-day-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectWeeklyDay(btn.dataset.day);
+      });
+    });
+
+    // Text input buttons
+    const parseBtn = document.getElementById('weekly-parse-btn');
+    if (parseBtn) {
+      parseBtn.addEventListener('click', parseWeeklyTextInput);
+    }
+
+    const saveTextBtn = document.getElementById('weekly-save-text-btn');
+    if (saveTextBtn) {
+      saveTextBtn.addEventListener('click', saveTextToTemplate);
+    }
+
+    // Visual mode buttons
+    const addTaskBtn = document.getElementById('weekly-add-task-btn');
+    if (addTaskBtn) {
+      addTaskBtn.addEventListener('click', () => {
+        // TODO: Implement add task functionality for visual mode
+        alert('Add Task functionality coming soon');
+      });
+    }
+
+    const saveVisualBtn = document.getElementById('weekly-save-visual-btn');
+    if (saveVisualBtn) {
+      saveVisualBtn.addEventListener('click', () => {
+        // Save current template
+        localStorage.setItem('weeklyTemplate', JSON.stringify(weeklyEditorState.currentTemplate));
+        alert('Template saved successfully');
+      });
+    }
+
+    // Blocks mode buttons
+    const createBlockBtn = document.getElementById('weekly-create-block-btn');
+    if (createBlockBtn) {
+      createBlockBtn.addEventListener('click', () => {
+        // TODO: Implement create block functionality
+        alert('Create Block functionality coming soon');
+      });
+    }
+
+    const saveBlocksBtn = document.getElementById('weekly-save-blocks-btn');
+    if (saveBlocksBtn) {
+      saveBlocksBtn.addEventListener('click', () => {
+        // Save current template
+        localStorage.setItem('weeklyTemplate', JSON.stringify(weeklyEditorState.currentTemplate));
+        alert('Template saved successfully');
+      });
+    }
+
+    // Quality of life buttons (copy to all, duplicate)
+    const copyAllBtn = document.getElementById('weekly-copy-all-btn');
+    if (copyAllBtn) {
+      copyAllBtn.addEventListener('click', () => {
+        copyDayToAll(weeklyEditorState.selectedDay);
+      });
+    }
+
+    const duplicateBtn = document.getElementById('weekly-duplicate-btn');
+    if (duplicateBtn) {
+      duplicateBtn.addEventListener('click', () => {
+        duplicatePreviousDay(weeklyEditorState.selectedDay);
+      });
+    }
+
+    // Weekly template button (in day planner)
+    const weeklyBtn = document.getElementById('open-weekly-editor');
+    if (weeklyBtn) {
+      weeklyBtn.addEventListener('click', openWeeklyTimetableEditor);
+    }
+
+    // Initialize with Monday selected
+    selectWeeklyDay('monday');
+  }
+
+  // Initialize Day Planner (Simplified - Daily Execution Only)
+  function initDayPlanner() {
+    // Cleanup previous intervals
+    if (dayPlannerClockInterval) {
+      clearInterval(dayPlannerClockInterval);
+    }
+    if (dayPlannerUpdateInterval) {
+      clearInterval(dayPlannerUpdateInterval);
+    }
+
+    loadDayPlannerData();
+    
+    // Set selected day to today automatically
+    dayPlannerState.selectedDay = getCurrentWeekday();
+    
+    // Update UI
+    updateDayPlannerDate();
+    updateDayPlannerClock();
+    renderDayPlannerTimeline();
+    updateCurrentTask();
+    
+    // Initialize weekly timetable editor
+    initializeWeeklyTimetableEditor();
+    
+    // Start midnight checker for today override reset
+    startMidnightChecker();
+    
+    // Start clock updates
+    dayPlannerClockInterval = setInterval(updateDayPlannerClock, 1000);
+    
+    // Start timeline updates (every minute)
+    dayPlannerUpdateInterval = setInterval(() => {
+      renderDayPlannerTimeline();
+      updateCurrentTask();
+    }, 60000);
+    
+    // Event delegation on day-planner-container
+    const plannerContainer = document.querySelector('.day-planner-container');
+    if (plannerContainer) {
+      plannerContainer.addEventListener('click', (e) => {
+        // Override Today button
+        if (e.target.closest('#day-planner-override-btn')) {
+          openOverrideModal();
+        }
+        
+        // Edit Weekly System button (opens weekly editor)
+        if (e.target.closest('#open-weekly-editor')) {
+          openWeeklyTimetableEditor();
+        }
+      });
+    }
+    
+    // Override modal close button (direct listener - outside container)
+    const overrideCloseBtn = document.getElementById('day-planner-override-close');
+    if (overrideCloseBtn) {
+      overrideCloseBtn.addEventListener('click', closeOverrideModal);
+    }
+    
+    // Override modal overlay click to close
+    const overrideModal = document.getElementById('day-planner-override-modal');
+    if (overrideModal) {
+      overrideModal.addEventListener('click', (e) => {
+        if (e.target === overrideModal) {
+          closeOverrideModal();
+        }
+      });
+    }
+    
+    // ESC key to close override modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('day-planner-override-modal');
+        if (modal && modal.classList.contains('active')) {
+          closeOverrideModal();
+        }
+      }
+    });
+    
+    // Override form submission
+    const overrideForm = document.getElementById('day-planner-override-form');
+    if (overrideForm) {
+      overrideForm.addEventListener('submit', saveOverride);
+    }
+  }
+
+  // Open Override Modal
+  function openOverrideModal() {
+    const modal = document.getElementById('day-planner-override-modal');
+    if (modal) {
+      modal.classList.add('active');
+    }
+  }
+
+  // Close Override Modal
+  function closeOverrideModal() {
+    const modal = document.getElementById('day-planner-override-modal');
+    if (modal) {
+      modal.classList.remove('active');
+      // Clear form
+      const form = document.getElementById('day-planner-override-form');
+      if (form) {
+        form.reset();
+      }
+    }
+  }
+
+  // Save Override
+  function saveOverride(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('day-planner-override-name').value.trim();
+    const startTime = document.getElementById('day-planner-override-start').value;
+    const endTime = document.getElementById('day-planner-override-end').value;
+    const description = document.getElementById('day-planner-override-description').value.trim();
+    
+    if (!name || !startTime || !endTime) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    // Create override task
+    const overrideTask = {
+      id: generateId(),
+      name,
+      startTime,
+      endTime,
+      description
+    };
+    
+    // Store override for today
+    const today = getCurrentWeekday();
+    dayPlannerState.todayOverride = overrideTask;
+    dayPlannerState.overrideDate = new Date().toDateString();
+    
+    saveDayPlannerData();
+    closeOverrideModal();
+    renderDayPlannerTimeline();
+    updateCurrentTask();
+    
+    alert('Today\'s schedule has been overridden. This will reset at midnight.');
+  }
+
+  // Check and reset override at midnight
+  function startMidnightChecker() {
+    const checkMidnight = () => {
+      const today = new Date().toDateString();
+      if (dayPlannerState.overrideDate && dayPlannerState.overrideDate !== today) {
+        // Reset override
+        dayPlannerState.todayOverride = null;
+        dayPlannerState.overrideDate = null;
+        saveDayPlannerData();
+        renderDayPlannerTimeline();
+        updateCurrentTask();
+      }
+    };
+    
+    // Check every minute
+    setInterval(checkMidnight, 60000);
+    checkMidnight(); // Check immediately
+  }
 })();

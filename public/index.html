@@ -138,7 +138,7 @@
     }
 
     .sidebar-header {
-      padding: 20px;
+      padding: 16px 20px;
       border-bottom: 1px solid var(--border-color);
     }
 
@@ -781,6 +781,16 @@
       color: var(--text-muted);
     }
 
+    .mock-badge {
+      font-size: 8px;
+      background: #1a1a1f;
+      color: #3A3A45;
+      padding: 2px 5px;
+      border-radius: 2px;
+      margin-left: 6px;
+      display: none;
+    }
+
     .chat-doom-badge {
       margin-left: auto;
       padding: 4px 8px;
@@ -891,10 +901,12 @@
     ============================================ */
     .screen {
       display: none;
+      pointer-events: auto !important;
     }
 
     .screen.active {
       display: block;
+      pointer-events: auto !important;
     }
 
     /* Stakes Onboarding Screen */
@@ -3215,6 +3227,159 @@
       font-size: 10px;
       color: var(--text-muted);
     }
+
+    .stakes-fear-card {
+      background: rgba(20, 5, 5, 0.95);
+      border: 1px solid rgba(248, 113, 113, 0.4);
+      border-left: 3px solid #F87171;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      animation: sfc-in 0.4s ease;
+    }
+    .stakes-fear-card.no-stakes {
+      border-color: rgba(251, 191, 36, 0.4);
+      border-left-color: #FBBF24;
+      background: rgba(20, 15, 0, 0.95);
+    }
+    @keyframes sfc-in {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .sfc-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .sfc-icon {
+      font-size: 14px;
+      color: #F87171;
+    }
+    .sfc-title {
+      font-family: monospace;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #F87171;
+      flex: 1;
+    }
+    .sfc-dismiss {
+      background: none;
+      border: none;
+      color: #3A3A45;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .sfc-dismiss:hover { color: #7A7A88; }
+    .sfc-goal-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .sfc-goal-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #E8E4DC;
+    }
+    .sfc-days {
+      font-family: monospace;
+      font-size: 9px;
+      color: #7A7A88;
+      padding: 2px 7px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+    }
+    .sfc-days.urgent { color: #FBBF24; }
+    .sfc-days.overdue {
+      color: #F87171;
+      font-weight: 700;
+    }
+    .sfc-fear-block {
+      margin-bottom: 10px;
+    }
+    .sfc-label {
+      font-family: monospace;
+      font-size: 7px;
+      letter-spacing: 0.15em;
+      color: #3A3A45;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .sfc-quote {
+      font-size: 12px;
+      color: #E8E4DC;
+      font-style: italic;
+      line-height: 1.6;
+      padding-left: 10px;
+      border-left: 2px solid #F87171;
+    }
+    .sfc-consequence {
+      margin-bottom: 10px;
+    }
+    .sfc-consequence-text {
+      font-size: 11px;
+      color: #7A7A88;
+      line-height: 1.6;
+    }
+    .sfc-who {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      color: #7A7A88;
+      margin-bottom: 14px;
+      padding: 7px 10px;
+      background: rgba(255,255,255,0.02);
+      border-radius: 4px;
+    }
+    .sfc-who-text { color: #E8E4DC; }
+    .sfc-footer {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .sfc-action {
+      background: none;
+      border: 1px solid rgba(248,113,113,0.3);
+      color: #F87171;
+      font-family: monospace;
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      padding: 7px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sfc-action:hover {
+      background: rgba(248,113,113,0.08);
+      border-color: rgba(248,113,113,0.6);
+    }
+    .sfc-body {
+      font-size: 12px;
+      color: #7A7A88;
+      line-height: 1.7;
+      margin-bottom: 14px;
+    }
+    .sfc-cta {
+      background: rgba(251,191,36,0.1);
+      border: 1px solid rgba(251,191,36,0.3);
+      color: #FBBF24;
+      font-family: monospace;
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sfc-cta:hover {
+      background: rgba(251,191,36,0.15);
+    }
   </style>
   <link rel="stylesheet" href="/orbit-ui.css">
 </head>
@@ -3287,6 +3452,15 @@
           </svg>
           Overview
         </button>
+        <button class="nav-item" data-screen="dayplanner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Day Planner
+        </button>
 
       </nav>
 
@@ -3351,18 +3525,7 @@
               </svg>
             </button>
           </div>
-          <div class="stakes-trigger-card" id="stakes-trigger-card">
-            <h3>⚠ REALITY CHECK</h3>
-            <div class="stakes-content">
-              <span class="stakes-days" id="stakes-days"></span>
-              <span class="stakes-quote" id="stakes-quote"></span>
-              That was true when you wrote it. It's still true.
-            </div>
-            <div class="stakes-actions">
-              <button id="stakes-trigger-action">I know. Show me what to do today →</button>
-              <button id="stakes-trigger-dismiss" class="stakes-dismiss-btn">Dismiss for 4 hours</button>
-            </div>
-          </div>
+          <div id="stakes-fear-card-container"></div>
           <div class="due-today-section" id="due-today-section">
             <h3 class="due-today-title">DUE TODAY</h3>
             <div class="due-today-cards" id="due-today-cards"></div>
@@ -3538,6 +3701,267 @@
             <div class="goals-grid" id="overview-goals"></div>
           </div>
         </div>
+
+        <!-- Day Planner Screen -->
+        <div class="screen" id="screen-dayplanner">
+          <div class="day-planner-container">
+            <!-- Today Header -->
+            <div class="day-planner-header">
+              <div class="day-planner-date-info">
+                <h2 class="day-planner-today-label">TODAY</h2>
+                <div class="day-planner-full-date" id="day-planner-full-date"></div>
+              </div>
+              <div class="day-planner-live-clock" id="day-planner-live-clock">00:00:00</div>
+            </div>
+
+            <!-- Current Task Card -->
+            <div class="day-planner-current-task" id="day-planner-current-task">
+              <div class="day-planner-current-label">CURRENT TASK</div>
+              <div class="day-planner-current-name" id="day-planner-current-name">No active task</div>
+              <div class="day-planner-current-time" id="day-planner-current-time"></div>
+              <div class="day-planner-current-remaining" id="day-planner-current-remaining"></div>
+            </div>
+
+            <!-- Up Next Card -->
+            <div class="day-planner-up-next" id="day-planner-up-next">
+              <div class="day-planner-up-next-label">UP NEXT</div>
+              <div class="day-planner-up-next-name" id="day-planner-up-next-name">No upcoming task</div>
+              <div class="day-planner-up-next-time" id="day-planner-up-next-time"></div>
+            </div>
+
+            <!-- Live Timeline -->
+            <div class="day-planner-timeline" id="day-planner-timeline">
+              <!-- Timeline items will be rendered here -->
+            </div>
+
+            <!-- Bottom Actions -->
+            <div class="day-planner-bottom-actions">
+              <button class="day-planner-btn-secondary" id="day-planner-override-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Override Today
+              </button>
+              <button class="day-planner-btn-primary" id="open-weekly-editor">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Edit Weekly System
+              </button>
+            </div>
+          </div>
+
+          <!-- Override Today Modal -->
+          <div class="day-planner-modal-overlay" id="day-planner-override-modal">
+            <div class="day-planner-modal">
+              <div class="day-planner-modal-header">
+                <h3 class="day-planner-modal-title">Override Today's Schedule</h3>
+                <button class="day-planner-modal-close" id="day-planner-override-close">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <form class="day-planner-modal-form" id="day-planner-override-form">
+                <div class="day-planner-form-group">
+                  <label class="day-planner-form-label">Task Name</label>
+                  <input type="text" class="day-planner-form-input" id="day-planner-override-name" required placeholder="Enter task name...">
+                </div>
+                <div class="day-planner-form-row">
+                  <div class="day-planner-form-group">
+                    <label class="day-planner-form-label">Start Time</label>
+                    <input type="time" class="day-planner-form-input" id="day-planner-override-start" required>
+                  </div>
+                  <div class="day-planner-form-group">
+                    <label class="day-planner-form-label">End Time</label>
+                    <input type="time" class="day-planner-form-input" id="day-planner-override-end" required>
+                  </div>
+                </div>
+                <div class="day-planner-form-group">
+                  <label class="day-planner-form-label">Description (optional)</label>
+                  <textarea class="day-planner-form-textarea" id="day-planner-override-description" placeholder="Add details..."></textarea>
+                </div>
+                <div class="day-planner-form-info">
+                  <p>This override will only apply to today. At midnight, your weekly template will automatically resume.</p>
+                </div>
+                <div class="day-planner-modal-actions">
+                  <button type="submit" class="day-planner-btn-primary">Apply Override</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weekly Timetable Editor Modal -->
+        <div class="weekly-timetable-modal" id="weekly-timetable-modal">
+          <div class="weekly-timetable-content">
+            <!-- Header Section -->
+            <div class="weekly-timetable-header">
+              <div class="weekly-header-content">
+                <div class="weekly-header-text">
+                  <h2>Weekly Timetable Editor</h2>
+                  <p class="weekly-header-subtitle">Build your weekly life system</p>
+                </div>
+                <button type="button" class="weekly-timetable-close" id="weekly-timetable-close">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Toolbar Section -->
+            <div class="weekly-timetable-toolbar">
+              <div class="weekly-mode-tabs">
+                <button class="weekly-tab active" data-mode="text">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14,2 14,8 20,8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10,9 9,9 8,9"/>
+                  </svg>
+                  Text Input
+                </button>
+                <button class="weekly-tab" data-mode="visual">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  Visual Timeline
+                </button>
+                <button class="weekly-tab" data-mode="blocks">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                  </svg>
+                  Blocks
+                </button>
+              </div>
+              
+              <div class="weekly-day-selector">
+                <button class="weekly-day-btn active" data-day="monday">MON</button>
+                <button class="weekly-day-btn" data-day="tuesday">TUE</button>
+                <button class="weekly-day-btn" data-day="wednesday">WED</button>
+                <button class="weekly-day-btn" data-day="thursday">THU</button>
+                <button class="weekly-day-btn" data-day="friday">FRI</button>
+                <button class="weekly-day-btn" data-day="saturday">SAT</button>
+                <button class="weekly-day-btn" data-day="sunday">SUN</button>
+              </div>
+            </div>
+
+            <!-- Main Workspace Section -->
+            <div class="weekly-timetable-workspace">
+              <!-- Text Input Mode -->
+              <div class="weekly-mode-panel active" id="weekly-mode-text">
+                <div class="weekly-text-workspace">
+                  <div class="weekly-text-sidebar">
+                    <h3>Syntax Guide</h3>
+                    <div class="weekly-syntax-examples">
+                      <div class="syntax-example">
+                        <span class="syntax-label">Time Format:</span>
+                        <code>06:00-07:00 | Gym</code>
+                      </div>
+                      <div class="syntax-example">
+                        <span class="syntax-label">Or AM/PM:</span>
+                        <code>6AM-8AM | Study</code>
+                      </div>
+                      <div class="syntax-example">
+                        <span class="syntax-label">With Day:</span>
+                        <code>MONDAY 6AM-7AM | Gym</code>
+                      </div>
+                    </div>
+                    <div class="weekly-text-preview">
+                      <h3>Live Preview</h3>
+                      <div id="weekly-text-preview-content" class="preview-content">
+                        <p class="preview-empty">Start typing to see preview...</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="weekly-text-editor">
+                    <textarea class="weekly-text-input" id="weekly-text-input" placeholder="Enter your weekly schedule...
+
+Example:
+MONDAY
+06:00-07:00 | Morning Routine
+07:00-09:00 | Deep Work
+09:00-10:00 | Breakfast
+
+TUESDAY
+06:00-07:00 | Gym
+07:00-09:00 | Study"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Visual Timeline Mode -->
+              <div class="weekly-mode-panel" id="weekly-mode-visual">
+                <div class="weekly-visual-workspace">
+                  <div class="weekly-timeline-grid" id="weekly-timeline">
+                    <!-- Timeline will be rendered here -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Blocks Mode -->
+              <div class="weekly-mode-panel" id="weekly-mode-blocks">
+                <div class="weekly-blocks-workspace">
+                  <div class="weekly-blocks-library">
+                    <div class="blocks-library-header">
+                      <h3>Reusable Blocks</h3>
+                      <button class="btn-icon" id="weekly-create-block-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <line x1="12" y1="5" x2="12" y2="19"/>
+                          <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="weekly-blocks-list" id="weekly-blocks-list">
+                      <!-- Blocks will be rendered here -->
+                    </div>
+                  </div>
+                  <div class="weekly-blocks-canvas">
+                    <div class="blocks-canvas-header">
+                      <h3>Weekly Template</h3>
+                      <div class="blocks-canvas-actions">
+                        <button class="weekly-btn-secondary" id="weekly-copy-all-btn">Copy to Weekdays</button>
+                        <button class="weekly-btn-secondary" id="weekly-duplicate-btn">Duplicate Previous</button>
+                      </div>
+                    </div>
+                    <div class="weekly-blocks-grid" id="weekly-blocks-grid">
+                      <!-- Day columns will be rendered here -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer Section -->
+            <div class="weekly-timetable-footer">
+              <div class="weekly-footer-actions" id="weekly-footer-text-actions">
+                <button type="button" class="weekly-btn-secondary" id="weekly-parse-btn">Parse & Preview</button>
+                <button type="button" class="weekly-btn-primary" id="weekly-save-text-btn">Save Template</button>
+              </div>
+              <div class="weekly-footer-actions" id="weekly-footer-visual-actions" style="display: none;">
+                <button type="button" class="weekly-btn-secondary" id="weekly-add-task-btn">Add Task</button>
+                <button type="button" class="weekly-btn-primary" id="weekly-save-visual-btn">Save Template</button>
+              </div>
+              <div class="weekly-footer-actions" id="weekly-footer-blocks-actions" style="display: none;">
+                <button type="button" class="weekly-btn-secondary" id="weekly-save-blocks-btn">Save Template</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -3551,7 +3975,7 @@
           </svg>
         </div>
         <div class="chat-info">
-          <h3>ORBIT AI</h3>
+          <h3>ORBIT AI <span id="mock-badge" class="mock-badge">[MOCK]</span></h3>
           <span>still here with you</span>
         </div>
         <div class="doom-indicator" id="chat-doom-indicator">
@@ -3610,6 +4034,15 @@
         <line x1="6" y1="20" x2="6" y2="14"/>
       </svg>
       Overview
+    </button>
+    <button class="nav-item" data-screen="dayplanner" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      Planner
     </button>
   </nav>
 
