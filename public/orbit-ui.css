@@ -1729,6 +1729,30 @@ body.chat-open .main { margin-right: 380px; }
   transform: translateY(-1px);
 }
 
+.weekly-btn-ai-generate {
+  width: 100%;
+  padding: 12px 20px;
+  margin-top: 16px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.weekly-btn-ai-generate:hover {
+  background: rgba(249, 115, 22, 0.1);
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.2);
+}
+
 /* Timeline Tasks */
 .weekly-timeline-task {
   padding: 14px 18px;

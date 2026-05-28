@@ -1544,6 +1544,26 @@
       height: 14px;
     }
 
+    .card-edit {
+      opacity: 0;
+      color: var(--text-muted);
+      transition: opacity 0.15s ease, color 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .goal-card:hover .card-edit {
+      opacity: 1;
+    }
+
+    .card-edit:hover {
+      color: #f97316;
+    }
+
+    .card-edit svg {
+      width: 14px;
+      height: 14px;
+    }
+
     /* Add Item Form */
     .add-item-form {
       display: flex;
@@ -4417,6 +4437,7 @@ MONDAY
 TUESDAY
 06:00-07:00 | Gym
 07:00-09:00 | Study"></textarea>
+                    <button type="button" class="weekly-btn-ai-generate" id="weekly-ai-generate-btn">✦ Generate with ORBIT AI</button>
                   </div>
                 </div>
               </div>
@@ -4613,6 +4634,79 @@ TUESDAY
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="cancel-goal">Cancel</button>
           <button type="submit" class="btn btn-primary">Add Goal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Goal Modal -->
+  <div class="modal-overlay" id="edit-goal-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Edit Goal</h2>
+        <button class="modal-close" id="close-edit-goal-modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <form id="edit-goal-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Goal Title</label>
+            <input type="text" class="form-input" id="edit-goal-title" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject/Category</label>
+            <input type="text" class="form-input" id="edit-goal-subject">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Total Hours Needed</label>
+            <input type="number" class="form-input" id="edit-goal-total-hours" min="1" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Logged Hours</label>
+            <input type="number" class="form-input" id="edit-goal-logged-hours" min="0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Deadline Date</label>
+            <input type="date" class="form-input" id="edit-goal-deadline" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Deadline Time (Optional)</label>
+            <input type="time" class="form-input" id="edit-goal-deadline-time">
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              <input type="checkbox" id="edit-goal-has-time-deadline">
+              Has Time Deadline
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-select" id="edit-goal-priority">
+              <option value="5">Critical (5)</option>
+              <option value="4">High (4)</option>
+              <option value="3">Medium (3)</option>
+              <option value="2">Low (2)</option>
+              <option value="1">Very Low (1)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Linked Vision Goal</label>
+            <select class="form-select" id="edit-goal-vision-link">
+              <option value="">None</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Personal Stake / Consequence if Missed</label>
+            <textarea class="form-textarea" id="edit-goal-stake" rows="3" placeholder="What do you lose if this goal fails?"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancel-edit-goal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
         </div>
       </form>
     </div>

@@ -3748,6 +3748,14 @@
   const cancelGoal = document.getElementById('cancel-goal');
   const goalVisionLink = document.getElementById('goal-vision-link');
 
+  // Edit goal modal elements
+  const editGoalModal = document.getElementById('edit-goal-modal');
+  const editGoalForm = document.getElementById('edit-goal-form');
+  const closeEditGoalModal = document.getElementById('close-edit-goal-modal');
+  const cancelEditGoal = document.getElementById('cancel-edit-goal');
+  const editGoalVisionLink = document.getElementById('edit-goal-vision-link');
+  let currentEditingGoalId = null;
+
   function getPriorityLabel(priority) {
     if (priority >= 3) return { label: 'High', class: 'high' };
     if (priority >= 2) return { label: 'Medium', class: 'medium' };
@@ -3865,6 +3873,12 @@
           <h3 class="goal-title">${escapeHtml(goal.title)}</h3>
           <div style="display:flex;align-items:center;gap:8px;">
             <span class="goal-priority ${priority.class}">${priority.label}</span>
+            <button type="button" class="card-edit" data-action="edit-goal" data-goal-id="${escapeHtml(goal.id)}" aria-label="Edit goal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
             ${showDelete ? `<button type="button" class="card-delete" data-action="delete-goal" aria-label="Delete goal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
           </div>
         </div>
@@ -4116,6 +4130,106 @@
 
     goalForm.reset();
     goalModal.classList.remove('active');
+    renderGoals();
+    updateDoomMeter();
+    window.dispatchEvent(new CustomEvent('orbit:refresh'));
+  });
+
+  // Edit goal modal logic
+  function updateEditVisionSelect() {
+    editGoalVisionLink.innerHTML =
+      '<option value="">None</option>' +
+      visions
+        .map((v) => `<option value="${escapeHtml(v.id)}">${escapeHtml(v.title)}</option>`)
+        .join('');
+  }
+
+  function openEditGoalModal(goalId) {
+    const goal = goals.find((g) => g.id === goalId);
+    if (!goal) return;
+
+    currentEditingGoalId = goalId;
+    updateEditVisionSelect();
+
+    // Populate form with current goal values
+    document.getElementById('edit-goal-title').value = goal.title || '';
+    document.getElementById('edit-goal-subject').value = goal.subject || '';
+    document.getElementById('edit-goal-total-hours').value = goal.total_hours || 1;
+    document.getElementById('edit-goal-logged-hours').value = goal.logged_hours || 0;
+    document.getElementById('edit-goal-deadline').value = goal.deadline || '';
+    document.getElementById('edit-goal-deadline-time').value = goal.deadline_time || '23:59';
+    document.getElementById('edit-goal-has-time-deadline').checked = goal.has_time_deadline || false;
+    document.getElementById('edit-goal-priority').value = goal.priority || 2;
+    document.getElementById('edit-goal-vision-link').value = goal.linked_vision_id || '';
+
+    // Populate stake from orbit_stakes
+    const goalStakes = stakes.goal_stakes[goalId] || {};
+    document.getElementById('edit-goal-stake').value = goalStakes.personal_stake || goalStakes.consequence_if_missed || '';
+
+    editGoalModal.classList.add('active');
+  }
+
+  function closeEditGoalModalHandler() {
+    editGoalModal.classList.remove('active');
+    editGoalForm.reset();
+    currentEditingGoalId = null;
+  }
+
+  // Handle edit button clicks
+  goalsGrid.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-action="edit-goal"]');
+    if (!editBtn) return;
+
+    const goalId = editBtn.dataset.goalId;
+    openEditGoalModal(goalId);
+  });
+
+  // Handle close and cancel buttons
+  closeEditGoalModal.addEventListener('click', closeEditGoalModalHandler);
+  cancelEditGoal.addEventListener('click', closeEditGoalModalHandler);
+
+  // Handle form submission
+  editGoalForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    if (!currentEditingGoalId) return;
+
+    const goalIndex = goals.findIndex((g) => g.id === currentEditingGoalId);
+    if (goalIndex === -1) return;
+
+    // Update goal data
+    goals[goalIndex].title = document.getElementById('edit-goal-title').value.trim();
+    goals[goalIndex].subject = document.getElementById('edit-goal-subject').value.trim();
+    goals[goalIndex].total_hours = Math.max(1, parseInt(document.getElementById('edit-goal-total-hours').value, 10) || 1);
+    goals[goalIndex].logged_hours = Math.max(0, parseInt(document.getElementById('edit-goal-logged-hours').value, 10) || 0);
+    goals[goalIndex].deadline = document.getElementById('edit-goal-deadline').value;
+    goals[goalIndex].deadline_time = document.getElementById('edit-goal-deadline-time').value || '23:59';
+    goals[goalIndex].has_time_deadline = document.getElementById('edit-goal-has-time-deadline').checked;
+    goals[goalIndex].priority = parseInt(document.getElementById('edit-goal-priority').value, 10) || 2;
+    goals[goalIndex].linked_vision_id = document.getElementById('edit-goal-vision-link').value || null;
+
+    // Update stake in orbit_stakes if changed
+    const newStake = document.getElementById('edit-goal-stake').value.trim();
+    if (newStake) {
+      if (!stakes.goal_stakes[currentEditingGoalId]) {
+        stakes.goal_stakes[currentEditingGoalId] = {
+          personal_stake: '',
+          consequence_if_missed: '',
+          who_affected: '',
+          emotional_weight: 3,
+        };
+      }
+      stakes.goal_stakes[currentEditingGoalId].personal_stake = newStake;
+      stakes.goal_stakes[currentEditingGoalId].consequence_if_missed = newStake;
+      saveData(STORAGE_KEYS.STAKES, stakes);
+    }
+
+    // Save updated goals
+    saveData(STORAGE_KEYS.GOALS, goals);
+    syncVisionLinkedGoals();
+
+    // Close modal and re-render
+    closeEditGoalModalHandler();
     renderGoals();
     updateDoomMeter();
     window.dispatchEvent(new CustomEvent('orbit:refresh'));
@@ -4575,7 +4689,36 @@ RULES:
 8. Doom meter affects your tone: ${doom <= 25 ? 'Calm and casual' : doom <= 50 ? 'Gently encouraging' : doom <= 70 ? 'More direct about priorities' : 'Honest about what needs to happen'}.
 9. When a goal has less than 24 hours remaining, treat it as the highest priority in the conversation. Reference the exact hours left, not just the date. Time is the variable that matters now.
 10. Reference the user's level naturally when relevant. If they're close to leveling up, mention it as motivation — not pressure.
-11. If user hasn't written a letter yet and doom is above 30%, casually mention it once: "Have you written your letter to future self yet? It takes 5 minutes and it's worth it."`;
+11. If user hasn't written a letter yet and doom is above 30%, casually mention it once: "Have you written your letter to future self yet? It takes 5 minutes and it's worth it."
+
+ORBIT FEATURES (know these, reference when relevant):
+- Today Page: Daily checklist (resets each morning), Pomodoro/Focus timer, Today's orbit score (habits + focus + hours + points)
+- Goals Page: Short-term goals with progress bars, logged hours, deadlines, priority, linked vision, edit functionality
+- Life Vision Board: Constellation-style cards, 1yr/3yr/5yr horizons
+- Overview Page: Doom trend chart, habit heatmap, focus bar chart, weekly summary stats
+- Day Planner: Weekly timetable editor — text input mode, visual timeline, blocks mode. User can type schedule in plain text format and save templates
+- ORBIT AI: This chat. Context-aware, memory system, stakes engine
+- Doom Meter: Top bar, rises passively when goals are neglected, multipliers near deadlines, shifts AI tone at thresholds
+- Level System: Drifting → Waking Up → In Orbit → Unstoppable (orbit points)
+- Retention hooks: Bad Day Protocol (doom>80%), Miss Me Message (2+ days away), Relapse Recovery (7+ days away), Stakes Fear Card (50%+ doom)
+- Data: All stored in localStorage. Export/Import available.
+- Sunk Cost display: Facts stored counter in chat header
+
+TIMETABLE CAPABILITY:
+When user asks for a timetable, schedule, routine, or weekly plan:
+1. Ask: wake time, sleep time, key commitments (college/work hours), goals they want time for, any fixed habits
+2. Generate a full weekly timetable in the Day Planner text format:
+
+MONDAY
+06:00-07:00 | Morning Routine
+07:00-09:00 | Deep Work — [goal name]
+...
+
+TUESDAY
+...
+
+3. Tell user: "Copy this into Day Planner → Text Input and hit 'Parse & Preview' to save it visually."
+4. Optimize for their goals — if DSA prep is a goal, block 2-3h daily for it. If gym is a habit, schedule it. Realistic always (max 6h deep work/day).`;
   }
 
   async function sendToAI(userMessage) {
@@ -5434,6 +5577,28 @@ RULES:
     const saveTextBtn = document.getElementById('weekly-save-text-btn');
     if (saveTextBtn) {
       saveTextBtn.addEventListener('click', saveTextToTemplate);
+    }
+
+    // AI generate button
+    const aiGenerateBtn = document.getElementById('weekly-ai-generate-btn');
+    if (aiGenerateBtn) {
+      aiGenerateBtn.addEventListener('click', () => {
+        // Open chat panel
+        const panel = document.getElementById('chat-panel');
+        const toggle = document.getElementById('header-chat-toggle');
+        if (panel && toggle) {
+          panel.classList.remove('collapsed');
+          toggle.classList.add('active');
+          localStorage.setItem('orbit_chat_open', 'true');
+
+          // Pre-fill message
+          const chatInput = document.getElementById('chat-input');
+          if (chatInput) {
+            chatInput.value = 'Build me a weekly timetable. Ask me what you need.';
+            chatInput.focus();
+          }
+        }
+      });
     }
 
     // Visual mode buttons
