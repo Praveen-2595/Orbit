@@ -98,6 +98,8 @@
     LAST_REPORT_DATE: 'orbit_last_report_date',
     ONBOARDING_COMPLETE: 'orbit_onboarding_complete',
     FREE_USAGE: 'orbit_free_usage',
+    STREAK: 'orbit_streak',
+    DAILY_ACTIVITY: 'orbit_daily_activity',
   };
 
   const DOOM_RGBA = {
@@ -566,6 +568,260 @@
   }
 
   // ============================================================================
+  // STREAK SYSTEM STORAGE LAYER
+  // ============================================================================
+
+  /**
+   * Get the complete streak data from localStorage
+   * Initializes with default structure if missing
+   * @returns {Object} Streak data with current, longest, lastActiveDate, freezeCount
+   */
+  function getStreak() {
+    const defaultStreak = {
+      current: 0,
+      longest: 0,
+      lastActiveDate: null,
+      freezeCount: 0
+    };
+    return loadData(STORAGE_KEYS.STREAK, defaultStreak);
+  }
+
+  /**
+   * Save the complete streak data to localStorage
+   * @param {Object} streakData - Streak data to save
+   */
+  function saveStreak(streakData) {
+    saveData(STORAGE_KEYS.STREAK, streakData);
+  }
+
+  /**
+   * Get today's daily activity record
+   * @returns {Object} Daily activity with flags for different activity types
+   */
+  function getDailyActivity() {
+    const today = getTodayDateString();
+    const defaultActivity = {
+      date: today,
+      habitCompleted: false,
+      focusLogged: false,
+      chatActivity: false,
+      checklistCompleted: false,
+      goalProgressed: false
+    };
+    const stored = loadData(STORAGE_KEYS.DAILY_ACTIVITY, defaultActivity);
+    
+    // Reset if it's a new day
+    if (stored.date !== today) {
+      return defaultActivity;
+    }
+    return stored;
+  }
+
+  /**
+   * Save today's daily activity record
+   * @param {Object} activityData - Activity data to save
+   */
+  function saveDailyActivity(activityData) {
+    saveData(STORAGE_KEYS.DAILY_ACTIVITY, activityData);
+  }
+
+  /**
+   * Check if user has had any meaningful activity today
+   * @returns {boolean} True if any activity type is true
+   */
+  function hasDailyActivity() {
+    const activity = getDailyActivity();
+    return activity.habitCompleted || 
+           activity.focusLogged || 
+           activity.chatActivity || 
+           activity.checklistCompleted || 
+           activity.goalProgressed;
+  }
+
+  /**
+   * Record a specific type of activity for today
+   * @param {string} activityType - One of: habitCompleted, focusLogged, chatActivity, checklistCompleted, goalProgressed
+   */
+  function recordActivity(activityType) {
+    const activity = getDailyActivity();
+    activity[activityType] = true;
+    saveDailyActivity(activity);
+    
+    // Update streak when activity is recorded
+    updateStreak();
+  }
+
+  /**
+   * Update the streak based on daily activity
+   * Handles streak logic: consecutive days increment, missed days reset
+   * Also manages freeze usage and milestone rewards
+   */
+  function updateStreak() {
+    const streak = getStreak();
+    const today = getTodayDateString();
+    const activity = getDailyActivity();
+    
+    // If no activity today, don't update streak
+    if (!hasDailyActivity()) {
+      return;
+    }
+    
+    // If already updated today, skip
+    if (streak.lastActiveDate === today) {
+      return;
+    }
+    
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayString = yesterday.toDateString();
+    
+    // Check if streak was broken (missed day without freeze)
+    if (streak.lastActiveDate && streak.lastActiveDate !== yesterdayString && streak.lastActiveDate !== today) {
+      // Try to use a freeze if available
+      if (streak.freezeCount > 0) {
+        streak.freezeCount--;
+        console.log("[ORBIT] Streak freeze used - streak protected");
+        // Don't reset streak, just continue
+      } else {
+        // Streak broken
+        streak.current = 0;
+        console.log("[ORBIT] Streak broken - starting fresh");
+      }
+    }
+    
+    // Increment streak
+    streak.current++;
+    streak.lastActiveDate = today;
+    
+    // Update longest streak
+    if (streak.current > streak.longest) {
+      streak.longest = streak.current;
+    }
+    
+    // Award freeze every 7-day milestone
+    if (streak.current > 0 && streak.current % 7 === 0) {
+      streak.freezeCount++;
+      console.log(`[ORBIT] Milestone reached: ${streak.current} days - freeze awarded`);
+    }
+    
+    saveStreak(streak);
+    renderStreakDisplay();
+  }
+
+  /**
+   * Apply a streak freeze manually (if user wants to save it)
+   * Currently freezes are auto-used, but this allows manual control
+   */
+  function applyFreeze() {
+    const streak = getStreak();
+    if (streak.freezeCount > 0) {
+      streak.freezeCount--;
+      saveStreak(streak);
+      console.log("[ORBIT] Freeze applied manually");
+      renderStreakDisplay();
+    }
+  }
+
+  /**
+   * Render the streak display in the sidebar
+   * Shows current streak with emotional messaging
+   */
+  function renderStreakDisplay() {
+    const streak = getStreak();
+    const streakDisplay = document.getElementById('streak-display');
+    
+    if (!streakDisplay) return;
+    
+    const current = streak.current;
+    const longest = streak.longest;
+    const freezeCount = streak.freezeCount;
+    
+    // Determine display text based on streak length
+    let displayText = '';
+    let subtitle = '';
+    let glowClass = '';
+    
+    if (current === 0) {
+      displayText = 'Start today';
+      subtitle = 'Begin your momentum';
+      glowClass = 'streak-inactive';
+    } else if (current === 1) {
+      displayText = '1 day in motion';
+      subtitle = 'The first step matters';
+      glowClass = 'streak-start';
+    } else {
+      displayText = `${current} days in motion`;
+      subtitle = current >= 30 ? 'Identity, not motivation' : 
+                 current >= 14 ? 'Building momentum' : 
+                 current >= 7 ? 'Finding your rhythm' : 'Consistency forming';
+      glowClass = current >= 30 ? 'streak-prestige' : 
+                  current >= 14 ? 'streak-strong' : 'streak-active';
+    }
+    
+    // Add freeze indicator if available
+    const freezeIndicator = freezeCount > 0 ? 
+      `<span class="streak-freeze-indicator" title="${freezeCount} freeze(s) available">❄️ ${freezeCount}</span>` : '';
+    
+    streakDisplay.innerHTML = `
+      <div class="streak-content ${glowClass}">
+        <div class="streak-icon">🔥</div>
+        <div class="streak-text">
+          <div class="streak-main">${displayText}</div>
+          <div class="streak-sub">${subtitle}</div>
+        </div>
+        ${freezeIndicator}
+      </div>
+    `;
+    
+    // Store streak data for AI awareness
+    window.orbitStreak = streak;
+  }
+
+  /**
+   * Get emotional response based on streak status
+   * Used by AI to provide context-aware messages
+   * @returns {string} Emotional message about streak
+   */
+  function getStreakEmotionalContext() {
+    const streak = getStreak();
+    const current = streak.current;
+    const longest = streak.longest;
+    
+    if (current === 0) {
+      return "The streak mattered less than the person building it. Start again today.";
+    } else if (current === 1) {
+      return "You showed up today. That's how everything begins.";
+    } else if (current >= 100) {
+      return "You've shown up for 100 straight days. This isn't motivation anymore — it's who you are.";
+    } else if (current >= 30) {
+      return "You've shown up for 30 straight days. That's not motivation anymore. That's identity.";
+    } else if (current >= 14) {
+      return "Two weeks of showing up. You're building something real.";
+    } else if (current >= 7) {
+      return "A week of momentum. You're finding your rhythm.";
+    } else if (current >= 3) {
+      return "Three days in a row. Consistency is taking shape.";
+    } else {
+      return `${current} days in motion. Keep showing up.`;
+    }
+  }
+
+  /**
+   * Get streak-based doom resistance modifier
+   * Higher streaks provide slight resistance to doom growth
+   * @returns {number} Resistance factor (0-1, where 1 = full resistance)
+   */
+  function getStreakDoomResistance() {
+    const streak = getStreak();
+    const current = streak.current;
+    
+    if (current >= 30) return 0.15; // 15% resistance
+    if (current >= 14) return 0.10; // 10% resistance
+    if (current >= 7) return 0.05;  // 5% resistance
+    return 0;
+  }
+
+  // ============================================================================
   // LETTER TO FUTURE SELF STORAGE LAYER
   // ============================================================================
 
@@ -661,8 +917,9 @@
     questionEl.style.animation = 'slide-up 0.5s ease forwards';
     questionEl.textContent = question.question;
     
-    // Clear answer
-    answerEl.value = '';
+    // Pre-fill answer if exists (for reopened onboarding)
+    const existingAnswer = onboardingAnswers[question.id] || '';
+    answerEl.value = existingAnswer;
     answerEl.focus();
     
     // Update progress
@@ -710,6 +967,12 @@
     // Update global stakes variable
     stakes = currentStakes;
     
+    // Remove update heading if it exists (from reopened onboarding)
+    const updateHeading = document.getElementById('stakes-update-heading');
+    if (updateHeading) {
+      updateHeading.remove();
+    }
+    
     // Hide onboarding, show today screen
     const onboardingScreen = document.getElementById('screen-stakes-onboarding');
     const todayScreen = document.getElementById('screen-today');
@@ -729,6 +992,58 @@
       console.log("[ORBIT] onboarding already complete, skipping");
     }
   }
+
+  /**
+   * Reopen the stakes onboarding flow for users who want to update their stakes
+   * This bypasses the onboarding_complete check and allows users to revisit the questions
+   */
+  function reopenStakesOnboarding() {
+    console.log("[ORBIT] reopening stakes onboarding for update");
+    
+    const onboardingScreen = document.getElementById('screen-stakes-onboarding');
+    const todayScreen = document.getElementById('screen-today');
+    
+    if (!onboardingScreen) {
+      console.error("[ORBIT] onboarding screen not found");
+      return;
+    }
+    
+    // Hide all screens, show onboarding
+    document.querySelectorAll('.screen').forEach(screen => {
+      screen.classList.remove('active');
+    });
+    onboardingScreen.classList.add('active');
+    
+    // Reset state
+    currentQuestionIndex = 0;
+    onboardingAnswers = {};
+    
+    // Load existing answers to pre-fill if available
+    const currentStakes = getOrbitStakes();
+    if (currentStakes.life_context) {
+      onboardingAnswers = { ...currentStakes.life_context };
+    }
+    
+    // Add update heading if not already present
+    let updateHeading = document.getElementById('stakes-update-heading');
+    if (!updateHeading) {
+      const container = document.querySelector('.stakes-onboarding-container');
+      if (container) {
+        updateHeading = document.createElement('h1');
+        updateHeading.id = 'stakes-update-heading';
+        updateHeading.className = 'stakes-update-heading';
+        updateHeading.textContent = 'Update what\'s at stake';
+        updateHeading.style.cssText = 'text-align: center; margin-bottom: 20px; color: #fff; font-size: 24px;';
+        container.insertBefore(updateHeading, container.firstChild);
+      }
+    }
+    
+    // Show first question
+    showQuestion(0);
+  }
+
+  // Make the function globally accessible for onclick handlers
+  window.reopenStakesOnboarding = reopenStakesOnboarding;
 
   function migrateStorage() {
     // Ensure stakes structure exists
@@ -918,7 +1233,7 @@
 
     memory = {
       last_updated: now.toISOString(),
-      doom_level: calculateDoom(),
+      doom_level: Math.max(0, Math.min(100, calculateDoom())),
       goals_count: goals.length,
       visions_count: visions.length,
       today_tasks_total: combined.length,
@@ -1125,6 +1440,10 @@
     target.logged_hours = (Number(target.logged_hours) || 0) + hours;
     saveData(STORAGE_KEYS.GOALS, goals);
     renderGoals();
+    
+    // Record activity for streak tracking
+    recordActivity('focusLogged');
+    recordActivity('goalProgressed');
   }
 
   // ============================================================================
@@ -1436,7 +1755,10 @@
     // Check for dev override
     const devDoomOverride = localStorage.getItem('orbit_prev_doom');
     if (devDoomOverride !== null) {
-      return parseInt(devDoomOverride, 10);
+      const rawDoom = parseInt(devDoomOverride, 10);
+      const safeDoom = Math.max(0, Math.min(100, rawDoom));
+      console.log("[ORBIT] doom (dev override):", rawDoom, "-> safe doom:", safeDoom);
+      return safeDoom;
     }
 
     // No goals or visions = no doom
@@ -1471,7 +1793,12 @@
     const weightedDoom = goals.length > 0 
       ? totalDoom / goals.length 
       : totalDoom;
-    return Math.min(100, Math.max(0, Math.round(weightedDoom)));
+    
+    // Apply streak-based doom resistance
+    const streakResistance = getStreakDoomResistance();
+    const finalDoom = weightedDoom * (1 - streakResistance);
+    
+    return Math.min(100, Math.max(0, Math.round(finalDoom)));
   }
 
   // ============================================================================
@@ -2377,43 +2704,45 @@
 
   function updateDoomMeter() {
     const doom = calculateDoom();
-    const color = getDoomColor(doom);
+    const safeDoom = Math.max(0, Math.min(100, doom));
+    console.log("[ORBIT] doom:", doom, "-> safe doom:", safeDoom);
+    const color = getDoomColor(safeDoom);
 
     // Smooth doom value transition
     const doomValueEl = document.getElementById('doom-value');
     if (doomValueEl) {
       // Animate the number change for smooth transition
-      animateValue(doomValueEl, previousDoom, doom, 500, '%');
+      animateValue(doomValueEl, previousDoom, safeDoom, 500, '%');
       doomValueEl.style.color = color;
     }
 
     const fill = document.getElementById('doom-fill');
     if (fill) {
-      fill.style.width = `${doom}%`;
+      fill.style.width = `${safeDoom}%`;
       fill.style.background = color;
     }
 
     fill.classList.remove('doom-fill-hot', 'doom-fill-critical');
-    if (doom > 75) fill.classList.add('doom-fill-critical');
-    else if (doom > 50) fill.classList.add('doom-fill-hot');
+    if (safeDoom > 75) fill.classList.add('doom-fill-critical');
+    else if (safeDoom > 50) fill.classList.add('doom-fill-hot');
 
     if (doomFillShine) {
-      doomFillShine.style.width = `${doom}%`;
-      doomFillShine.classList.toggle('doom-fill-hot', doom > 50);
+      doomFillShine.style.width = `${safeDoom}%`;
+      doomFillShine.classList.toggle('doom-fill-hot', safeDoom > 50);
     }
 
     if (doomBarEl) {
       doomBarEl.classList.remove('doom-bar-safe', 'doom-bar-amber', 'doom-bar-red', 'doom-bar-critical', 'doom-bar-hot');
-      if (doom > 75) doomBarEl.classList.add('doom-bar-critical');
-      else if (doom > 50) doomBarEl.classList.add('doom-bar-red');
-      else if (doom > 25) doomBarEl.classList.add('doom-bar-amber');
+      if (safeDoom > 75) doomBarEl.classList.add('doom-bar-critical');
+      else if (safeDoom > 50) doomBarEl.classList.add('doom-bar-red');
+      else if (safeDoom > 25) doomBarEl.classList.add('doom-bar-amber');
       else doomBarEl.classList.add('doom-bar-safe');
     }
 
     // Update previous doom for next transition
-    previousDoom = doom;
+    previousDoom = safeDoom;
     if (doomMeterTop) {
-      doomMeterTop.classList.toggle('doom-ambient-hot', doom > 75);
+      doomMeterTop.classList.toggle('doom-ambient-hot', safeDoom > 75);
     }
 
     // Update doom tooltip
@@ -2493,7 +2822,8 @@
 
   function renderStakesFearCard() {
     const doom = calculateDoom();
-    if (doom < 50) return '';
+    const safeDoom = Math.max(0, Math.min(100, doom));
+    if (safeDoom < 50) return '';
 
     // Check if dismissed recently
     const dismissedUntil = localStorage.getItem('stakes_card_dismissed_until');
@@ -2508,6 +2838,8 @@
 
     // Get goal-specific stake if exists
     const goalStake = riskGoal && stakes.goal_stakes ? stakes.goal_stakes[riskGoal.id] : null;
+
+    console.log("[ORBIT] stake object:", { riskGoal, goalStake, lifeContext });
 
     // Build fear message from their own words
     // Priority: goal stake → life context → generic
@@ -2547,14 +2879,14 @@
         <div class="sfc-header">
           <span class="sfc-icon">⚠</span>
           <span class="sfc-title">
-            DOOM IS ${doom}% — BUT WHY DOES IT MATTER?
+            DOOM IS ${safeDoom}% — BUT WHY DOES IT MATTER?
           </span>
           <button class="sfc-dismiss" onclick="dismissStakesCard()">×</button>
         </div>
         <p class="sfc-body">
           You haven't told ORBIT what's actually at stake for you. The pressure is real — but it hits harder when it's personal.
         </p>
-        <button class="sfc-cta" onclick="openStakesOnboarding()">
+        <button class="sfc-cta" onclick="reopenStakesOnboarding()">
           Tell ORBIT what you're risking →
         </button>
       </div>`;
@@ -2571,7 +2903,7 @@
 
       ${riskGoal ? `
       <div class="sfc-goal-line">
-        <span class="sfc-goal-name">${riskGoal.title}</span>
+        <span class="sfc-goal-name">${riskGoal.title || 'Your Goal'}</span>
         ${daysLeft !== null ? `
         <span class="sfc-days ${daysLeft < 0 ? 'overdue' : daysLeft < 3 ? 'urgent' : ''}">
           ${daysLeft < 0 ? Math.abs(daysLeft) + 'd overdue' : daysLeft + 'd left'}
@@ -2601,8 +2933,11 @@
       </div>` : ''}
 
       <div class="sfc-footer">
-        <button class="sfc-action" onclick="handleStakesAction(${doom})">
+        <button class="sfc-action" onclick="handleStakesAction(${safeDoom})">
           I know. Tell me what to do now →
+        </button>
+        <button class="sfc-secondary" onclick="reopenStakesOnboarding()">
+          Update what's at stake
         </button>
       </div>
     </div>`;
@@ -3003,6 +3338,8 @@
     renderChecklists();
     updateDoomMeter();
     if (item.completed && !wasCompleted) {
+      // Record activity for streak tracking
+      recordActivity('checklistCompleted');
       window.dispatchEvent(
         new CustomEvent('orbit:habitComplete', { detail: { id, listType } }),
       );
@@ -3992,7 +4329,7 @@
     }
 
     const mood = parseInt(letterMood.value, 10);
-    const doom = calculateDoom();
+    const doom = Math.max(0, Math.min(100, calculateDoom()));
     const now = new Date();
     const revealAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
@@ -4332,6 +4669,9 @@ RULES:
     addMessage(message, true);
     chatInput.value = '';
 
+    // Record activity for streak tracking (meaningful chat)
+    recordActivity('chatActivity');
+
     // Extract stakes from user message
     extractStakesFromMessage(message);
 
@@ -4479,6 +4819,9 @@ RULES:
 
   // Check stakes onboarding on app initialization
   checkStakesOnboarding();
+
+  // Initialize streak display on app load
+  renderStreakDisplay();
 
   // Premium modal event listeners
   const premiumUpgradeBtn = document.getElementById('premium-upgrade-btn');
@@ -5353,7 +5696,7 @@ RULES:
     }).length;
 
     // Doom average this week (we'll use current doom as approximation)
-    const doomAverage = calculateDoom();
+    const doomAverage = Math.max(0, Math.min(100, calculateDoom()));
 
     return {
       habitsCompleted: habitsCompletedThisWeek,
