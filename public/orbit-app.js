@@ -6,6 +6,9 @@
   const MOCK_MODE = false;
   // Change to false when using real API key
 
+  const DEV_MODE = false;
+  // Set to true to show developer-only model diagnostics
+
   const ORBIT_LEVELS = [
     {
       min: 0, max: 99,
@@ -465,6 +468,26 @@
     counterEl.style.animation = 'none';
     counterEl.offsetHeight; // Trigger reflow
     counterEl.style.animation = 'counter-pulse 0.3s ease';
+  }
+
+  function updateModelDisplay() {
+    const modelEl = document.getElementById('model-display');
+    if (!modelEl) return;
+
+    const isDevMode = DEV_MODE || localStorage.getItem('dev_mode') === 'true';
+    
+    if (!isDevMode || !window.currentAIModel) {
+      modelEl.style.display = 'none';
+      return;
+    }
+
+    // Format model name for display (e.g., "claude-sonnet-4-5" -> "Claude Sonnet 4.5")
+    const formattedModel = window.currentAIModel
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+
+    modelEl.textContent = `Running on: ${formattedModel}`;
+    modelEl.style.display = 'block';
   }
 
   function showPremiumModal() {
@@ -3927,6 +3950,9 @@
   updatePomodoroDisplay();
 
   const goalsGrid = document.getElementById('goals-grid');
+  
+  // Debug: Verify goalsGrid exists
+  console.log("[ORBIT] goalsGrid element check:", !!goalsGrid);
   const addGoalBtn = document.getElementById('add-goal-btn');
   const goalModal = document.getElementById('goal-modal');
   const goalForm = document.getElementById('goal-form');
@@ -3941,6 +3967,15 @@
   const cancelEditGoal = document.getElementById('cancel-edit-goal');
   const editGoalVisionLink = document.getElementById('edit-goal-vision-link');
   let currentEditingGoalId = null;
+
+  // Debug: Verify edit modal elements exist
+  console.log("[ORBIT] Edit goal modal elements check:", {
+    editGoalModal: !!editGoalModal,
+    editGoalForm: !!editGoalForm,
+    closeEditGoalModal: !!closeEditGoalModal,
+    cancelEditGoal: !!cancelEditGoal,
+    editGoalVisionLink: !!editGoalVisionLink
+  });
 
   function getPriorityLabel(priority) {
     if (priority >= 3) return { label: 'High', class: 'high' };
@@ -4442,92 +4477,165 @@
   }
 
   function openEditGoalModal(goalId) {
-    const goal = goals.find((g) => g.id === goalId);
-    if (!goal) return;
+    try {
+      console.log("[ORBIT] Edit button clicked", goalId);
+      
+      const goal = goals.find((g) => g.id === goalId);
+      if (!goal) {
+        console.error("[ORBIT] Goal not found for ID:", goalId);
+        return;
+      }
+      
+      console.log("[ORBIT] Goal found:", goal);
 
-    currentEditingGoalId = goalId;
-    updateEditVisionSelect();
-    updateChecklistSelect(document.getElementById('edit-goal-checklist-link'));
+      // Verify modal exists
+      if (!editGoalModal) {
+        console.error("[ORBIT] Edit goal modal not found in DOM");
+        return;
+      }
 
-    // Determine goal type (default to hour-based for existing goals without type)
-    const goalType = goal.type || 'hour-based';
+      currentEditingGoalId = goalId;
+      updateEditVisionSelect();
+      updateChecklistSelect(document.getElementById('edit-goal-checklist-link'));
 
-    // Set goal type radio
-    const typeRadio = document.querySelector(`input[name="edit-goal-type"][value="${goalType}"]`);
-    if (typeRadio) typeRadio.checked = true;
+      // Determine goal type (default to hour-based for existing goals without type)
+      const goalType = goal.type || 'hour-based';
 
-    // Populate form with current goal values
-    document.getElementById('edit-goal-title').value = goal.title || '';
-    document.getElementById('edit-goal-subject').value = goal.subject || '';
-    document.getElementById('edit-goal-deadline').value = goal.deadline || '';
-    document.getElementById('edit-goal-deadline-time').value = goal.deadline_time || '23:59';
-    document.getElementById('edit-goal-has-time-deadline').checked = goal.has_time_deadline || false;
-    document.getElementById('edit-goal-priority').value = goal.priority || 2;
-    document.getElementById('edit-goal-vision-link').value = goal.linked_vision_id || '';
-    document.getElementById('edit-goal-checklist-link').value = goal.linked_checklist_id || '';
+      // Set goal type radio
+      const typeRadio = document.querySelector(`input[name="edit-goal-type"][value="${goalType}"]`);
+      if (typeRadio) typeRadio.checked = true;
 
-    // Populate stake from orbit_stakes
-    const goalStakes = stakes.goal_stakes[goalId] || {};
-    document.getElementById('edit-goal-stake').value = goalStakes.personal_stake || goalStakes.consequence_if_missed || '';
+      // Populate form with current goal values
+      const titleInput = document.getElementById('edit-goal-title');
+      const subjectInput = document.getElementById('edit-goal-subject');
+      const deadlineInput = document.getElementById('edit-goal-deadline');
+      const deadlineTimeInput = document.getElementById('edit-goal-deadline-time');
+      const hasTimeDeadlineInput = document.getElementById('edit-goal-has-time-deadline');
+      const priorityInput = document.getElementById('edit-goal-priority');
+      const visionLinkInput = document.getElementById('edit-goal-vision-link');
+      const checklistLinkInput = document.getElementById('edit-goal-checklist-link');
+      const stakeInput = document.getElementById('edit-goal-stake');
 
-    // Handle type-specific fields
-    const hoursGroup = document.getElementById('edit-goal-hours-group');
-    const loggedHoursGroup = document.getElementById('edit-goal-logged-hours-group');
-    const targetDaysGroup = document.getElementById('edit-goal-target-days-group');
-    const streakCountGroup = document.getElementById('edit-goal-streak-count-group');
-    const helperText = document.getElementById('edit-goal-type-helper');
+      if (titleInput) titleInput.value = goal.title || '';
+      if (subjectInput) subjectInput.value = goal.subject || '';
+      if (deadlineInput) deadlineInput.value = goal.deadline || '';
+      if (deadlineTimeInput) deadlineTimeInput.value = goal.deadline_time || '23:59';
+      if (hasTimeDeadlineInput) hasTimeDeadlineInput.checked = goal.has_time_deadline || false;
+      if (priorityInput) priorityInput.value = goal.priority || 2;
+      if (visionLinkInput) visionLinkInput.value = goal.linked_vision_id || '';
+      if (checklistLinkInput) checklistLinkInput.value = goal.linked_checklist_id || '';
 
-    if (goalType === 'hour-based') {
-      hoursGroup.style.display = 'block';
-      loggedHoursGroup.style.display = 'block';
-      targetDaysGroup.style.display = 'none';
-      streakCountGroup.style.display = 'none';
-      helperText.textContent = 'Track by time spent — use with Pomodoro or manual logging';
-      document.getElementById('edit-goal-total-hours').value = goal.total_hours || 1;
-      document.getElementById('edit-goal-logged-hours').value = goal.logged_hours || 0;
-    } else {
-      hoursGroup.style.display = 'none';
-      loggedHoursGroup.style.display = 'none';
-      targetDaysGroup.style.display = 'block';
-      streakCountGroup.style.display = 'block';
-      helperText.textContent = 'Track by daily consistency — connect to your daily checklist';
-      document.getElementById('edit-goal-target-days').value = goal.target_days || 30;
-      document.getElementById('edit-goal-streak-count').value = goal.streak_count || 0;
+      // Populate stake from orbit_stakes
+      const goalStakes = stakes.goal_stakes[goalId] || {};
+      if (stakeInput) stakeInput.value = goalStakes.personal_stake || goalStakes.consequence_if_missed || '';
+
+      // Handle type-specific fields
+      const hoursGroup = document.getElementById('edit-goal-hours-group');
+      const loggedHoursGroup = document.getElementById('edit-goal-logged-hours-group');
+      const targetDaysGroup = document.getElementById('edit-goal-target-days-group');
+      const streakCountGroup = document.getElementById('edit-goal-streak-count-group');
+      const helperText = document.getElementById('edit-goal-type-helper');
+
+      if (goalType === 'hour-based') {
+        if (hoursGroup) hoursGroup.style.display = 'block';
+        if (loggedHoursGroup) loggedHoursGroup.style.display = 'block';
+        if (targetDaysGroup) targetDaysGroup.style.display = 'none';
+        if (streakCountGroup) streakCountGroup.style.display = 'none';
+        if (helperText) helperText.textContent = 'Track by time spent — use with Pomodoro or manual logging';
+        
+        const totalHoursInput = document.getElementById('edit-goal-total-hours');
+        const loggedHoursInput = document.getElementById('edit-goal-logged-hours');
+        if (totalHoursInput) totalHoursInput.value = goal.total_hours || 1;
+        if (loggedHoursInput) loggedHoursInput.value = goal.logged_hours || 0;
+      } else {
+        if (hoursGroup) hoursGroup.style.display = 'none';
+        if (loggedHoursGroup) loggedHoursGroup.style.display = 'none';
+        if (targetDaysGroup) targetDaysGroup.style.display = 'block';
+        if (streakCountGroup) streakCountGroup.style.display = 'block';
+        if (helperText) helperText.textContent = 'Track by daily consistency — connect to your daily checklist';
+        
+        const targetDaysInput = document.getElementById('edit-goal-target-days');
+        const streakCountInput = document.getElementById('edit-goal-streak-count');
+        if (targetDaysInput) targetDaysInput.value = goal.target_days || 30;
+        if (streakCountInput) streakCountInput.value = goal.streak_count || 0;
+      }
+
+      // Setup toggle handler
+      handleGoalTypeToggle('edit');
+
+      console.log("[ORBIT] Opening edit modal");
+      editGoalModal.classList.add('active');
+    } catch (error) {
+      console.error("[ORBIT] Goal edit failed:", error);
     }
-
-    // Setup toggle handler
-    handleGoalTypeToggle('edit');
-
-    editGoalModal.classList.add('active');
   }
 
   function closeEditGoalModalHandler() {
-    editGoalModal.classList.remove('active');
-    editGoalForm.reset();
+    if (editGoalModal) {
+      editGoalModal.classList.remove('active');
+    }
+    if (editGoalForm) {
+      editGoalForm.reset();
+    }
     currentEditingGoalId = null;
   }
 
   // Handle edit button clicks
-  goalsGrid.addEventListener('click', (e) => {
-    const editBtn = e.target.closest('[data-action="edit-goal"]');
-    if (!editBtn) return;
+  if (goalsGrid) {
+    goalsGrid.addEventListener('click', (e) => {
+      try {
+        const editBtn = e.target.closest('[data-action="edit-goal"]');
+        if (!editBtn) return;
 
-    const goalId = editBtn.dataset.goalId;
-    openEditGoalModal(goalId);
+        const goalId = editBtn.dataset.goalId;
+        console.log("[ORBIT] Edit button click detected, goalId:", goalId);
+        openEditGoalModal(goalId);
+      } catch (error) {
+        console.error("[ORBIT] Edit button click handler failed:", error);
+      }
+    });
+  } else {
+    console.error("[ORBIT] goalsGrid element not found - edit button listener not attached");
+  }
+
+  // Fallback: Document-level delegated listener for edit buttons
+  // This ensures edit buttons work even if goalsGrid is missing or listener attachment fails
+  document.addEventListener('click', (e) => {
+    try {
+      const editBtn = e.target.closest('[data-action="edit-goal"]');
+      if (!editBtn) return;
+
+      const goalId = editBtn.dataset.goalId;
+      console.log("[ORBIT] Edit button click detected (delegated), goalId:", goalId);
+      openEditGoalModal(goalId);
+    } catch (error) {
+      console.error("[ORBIT] Delegated edit button click handler failed:", error);
+    }
   });
 
   // Handle close and cancel buttons
-  closeEditGoalModal.addEventListener('click', closeEditGoalModalHandler);
-  cancelEditGoal.addEventListener('click', closeEditGoalModalHandler);
+  if (closeEditGoalModal) {
+    closeEditGoalModal.addEventListener('click', closeEditGoalModalHandler);
+  } else {
+    console.error("[ORBIT] closeEditGoalModal button not found");
+  }
+  
+  if (cancelEditGoal) {
+    cancelEditGoal.addEventListener('click', closeEditGoalModalHandler);
+  } else {
+    console.error("[ORBIT] cancelEditGoal button not found");
+  }
 
   // Handle form submission
-  editGoalForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+  if (editGoalForm) {
+    editGoalForm.addEventListener('submit', (e) => {
+      try {
+        e.preventDefault();
 
-    if (!currentEditingGoalId) return;
+        if (!currentEditingGoalId) return;
 
-    const goalIndex = goals.findIndex((g) => g.id === currentEditingGoalId);
-    if (goalIndex === -1) return;
+        const goalIndex = goals.findIndex((g) => g.id === currentEditingGoalId);
+        if (goalIndex === -1) return;
 
     const goalType = document.querySelector('input[name="edit-goal-type"]:checked').value;
 
@@ -4594,7 +4702,13 @@
     renderGoals();
     updateDoomMeter();
     window.dispatchEvent(new CustomEvent('orbit:refresh'));
-  });
+      } catch (error) {
+        console.error("[ORBIT] Edit goal form submission failed:", error);
+      }
+    });
+  } else {
+    console.error("[ORBIT] editGoalForm not found - form submission handler not attached");
+  }
 
   const visionGrid = document.getElementById('vision-grid');
   const addVisionBtn = document.getElementById('add-vision-btn');
@@ -5116,7 +5230,7 @@ TUESDAY
       throw new Error('Unexpected response from server');
     }
 
-    return data.message;
+    return { message: data.message, model: data.model };
   }
 
   function getMockResponse(messages) {
@@ -5183,11 +5297,21 @@ TUESDAY
 
     try {
       const response = await sendToAI(message);
+      const aiMessage = response.message;
+      const model = response.model;
+      
+      // Store current model for developer display
+      if (model) {
+        window.currentAIModel = model;
+        updateModelDisplay();
+        console.log("[ORBIT] AI model:", model);
+      }
+      
       chatHistory.push({ role: 'user', content: message });
-      chatHistory.push({ role: 'assistant', content: response });
+      chatHistory.push({ role: 'assistant', content: aiMessage });
       saveData(STORAGE_KEYS.CHAT_HISTORY, chatHistory);
       removeTypingIndicator();
-      addMessage(response, false);
+      addMessage(aiMessage, false);
       updateMemory();
       
       // Increment usage count after successful AI response
@@ -5225,6 +5349,7 @@ TUESDAY
   restoreChatUI();
   updateMemoryCountDisplay();
   updateUsageCounterDisplay();
+  updateModelDisplay();
   window.dispatchEvent(new CustomEvent('orbit:refresh'));
 
   // Auto-recalculate doom every 60 seconds
@@ -6344,6 +6469,13 @@ Write a 3-4 sentence identity narrative — not a metrics summary. Who were they
 
     if (!response.ok) {
       throw new Error(typeof data.error === 'string' ? data.error : 'Could not generate narrative');
+    }
+
+    // Update model display if model is returned
+    if (data.model) {
+      window.currentAIModel = data.model;
+      updateModelDisplay();
+      console.log("[ORBIT] AI model:", data.model);
     }
 
     return data.message;

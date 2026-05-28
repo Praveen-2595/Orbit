@@ -901,6 +901,15 @@
       transition: color 0.3s ease;
     }
 
+    .model-display {
+      font-size: 10px;
+      color: #f97316;
+      margin-top: 2px;
+      opacity: 0.5;
+      font-weight: 400;
+      display: none;
+    }
+
     @keyframes counter-pulse {
       0% {
         opacity: 0.8;
@@ -4522,6 +4531,7 @@ TUESDAY
           <span>still here with you</span>
           <div id="memory-count-display" class="memory-count-display">🧠 0 facts stored</div>
           <div id="free-usage-counter" class="free-usage-counter">10 / 10 free conversations left today</div>
+          <div id="model-display" class="model-display"></div>
         </div>
         <div class="doom-indicator" id="chat-doom-indicator">
           <span class="doom-percent" id="chat-doom-percent">0%</span>
@@ -4605,6 +4615,23 @@ TUESDAY
       </div>
       <form id="goal-form">
         <div class="modal-body">
+          <p class="modal-helper-text">Choose how you want to track this goal. Not sure? Hour-based for study/work goals. Streak-based for habits like gym or reading.</p>
+          <div class="form-group">
+            <label class="form-label">Goal Type</label>
+            <div class="goal-type-selector">
+              <label class="goal-type-option">
+                <input type="radio" name="goal-type" value="hour-based" checked>
+                <span class="goal-type-icon">⏱</span>
+                <span class="goal-type-label">Hour-Based</span>
+              </label>
+              <label class="goal-type-option">
+                <input type="radio" name="goal-type" value="streak-based">
+                <span class="goal-type-icon">✅</span>
+                <span class="goal-type-label">Streak-Based</span>
+              </label>
+            </div>
+            <p class="field-helper-text" id="goal-type-helper">Track by time spent — use with Pomodoro or manual logging</p>
+          </div>
           <div class="form-group">
             <label class="form-label">Goal Title</label>
             <input type="text" class="form-input" id="goal-title" placeholder="e.g., Learn TypeScript" required>
@@ -4613,9 +4640,14 @@ TUESDAY
             <label class="form-label">Subject/Category</label>
             <input type="text" class="form-input" id="goal-subject" placeholder="e.g., Programming">
           </div>
-          <div class="form-group">
+          <div class="form-group" id="goal-hours-group">
             <label class="form-label">Total Hours Needed</label>
-            <input type="number" class="form-input" id="goal-hours" placeholder="e.g., 50" min="1" required>
+            <input type="number" class="form-input" id="goal-hours" placeholder="e.g., 50" min="1">
+          </div>
+          <div class="form-group" id="goal-target-days-group" style="display: none;">
+            <label class="form-label">Target Days</label>
+            <input type="number" class="form-input" id="goal-target-days" placeholder="e.g., 45" min="1">
+            <p class="field-helper-text">Number of days you want to maintain this habit</p>
           </div>
           <div class="form-group">
             <label class="form-label">Deadline</label>
@@ -4628,6 +4660,13 @@ TUESDAY
               <option value="2" selected>Medium</option>
               <option value="1">Low</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Link to Daily Checklist Item</label>
+            <select class="form-select" id="goal-checklist-link">
+              <option value="">None</option>
+            </select>
+            <p class="field-helper-text">When you complete this habit today, it counts toward this goal</p>
           </div>
           <div class="form-group">
             <label class="form-label">Link to Life Vision (Optional)</label>
@@ -4658,6 +4697,23 @@ TUESDAY
       </div>
       <form id="edit-goal-form">
         <div class="modal-body">
+          <p class="modal-helper-text">Choose how you want to track this goal. Not sure? Hour-based for study/work goals. Streak-based for habits like gym or reading.</p>
+          <div class="form-group">
+            <label class="form-label">Goal Type</label>
+            <div class="goal-type-selector">
+              <label class="goal-type-option">
+                <input type="radio" name="edit-goal-type" value="hour-based" checked>
+                <span class="goal-type-icon">⏱</span>
+                <span class="goal-type-label">Hour-Based</span>
+              </label>
+              <label class="goal-type-option">
+                <input type="radio" name="edit-goal-type" value="streak-based">
+                <span class="goal-type-icon">✅</span>
+                <span class="goal-type-label">Streak-Based</span>
+              </label>
+            </div>
+            <p class="field-helper-text" id="edit-goal-type-helper">Track by time spent — use with Pomodoro or manual logging</p>
+          </div>
           <div class="form-group">
             <label class="form-label">Goal Title</label>
             <input type="text" class="form-input" id="edit-goal-title" required>
@@ -4666,13 +4722,23 @@ TUESDAY
             <label class="form-label">Subject/Category</label>
             <input type="text" class="form-input" id="edit-goal-subject">
           </div>
-          <div class="form-group">
+          <div class="form-group" id="edit-goal-hours-group">
             <label class="form-label">Total Hours Needed</label>
-            <input type="number" class="form-input" id="edit-goal-total-hours" min="1" required>
+            <input type="number" class="form-input" id="edit-goal-total-hours" min="1">
           </div>
-          <div class="form-group">
+          <div class="form-group" id="edit-goal-logged-hours-group">
             <label class="form-label">Logged Hours</label>
-            <input type="number" class="form-input" id="edit-goal-logged-hours" min="0" required>
+            <input type="number" class="form-input" id="edit-goal-logged-hours" min="0">
+          </div>
+          <div class="form-group" id="edit-goal-target-days-group" style="display: none;">
+            <label class="form-label">Target Days</label>
+            <input type="number" class="form-input" id="edit-goal-target-days" placeholder="e.g., 45" min="1">
+            <p class="field-helper-text">Number of days you want to maintain this habit</p>
+          </div>
+          <div class="form-group" id="edit-goal-streak-count-group" style="display: none;">
+            <label class="form-label">Current Streak (Days)</label>
+            <input type="number" class="form-input" id="edit-goal-streak-count" min="0">
+            <p class="field-helper-text">Days completed so far</p>
           </div>
           <div class="form-group">
             <label class="form-label">Deadline Date</label>
@@ -4697,6 +4763,13 @@ TUESDAY
               <option value="2">Low (2)</option>
               <option value="1">Very Low (1)</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Link to Daily Checklist Item</label>
+            <select class="form-select" id="edit-goal-checklist-link">
+              <option value="">None</option>
+            </select>
+            <p class="field-helper-text">When you complete this habit today, it counts toward this goal</p>
           </div>
           <div class="form-group">
             <label class="form-label">Linked Vision Goal</label>

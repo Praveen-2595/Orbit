@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_VERSION = '2023-06-01'
-const DEFAULT_MODEL = 'claude-sonnet-4-5'
+const DEFAULT_MODEL = 'claude-sonnet-4-6'
+const FALLBACK_MODEL = 'claude-sonnet-4-5'
 
 type ChatMessage = {
   role: 'user' | 'assistant'
@@ -53,6 +54,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const MODEL = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL
+    console.log("[ORBIT] Using model:", MODEL)
+
     const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
@@ -61,7 +65,7 @@ export async function POST(request: NextRequest) {
         'anthropic-version': ANTHROPIC_VERSION,
       },
       body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL,
+        model: MODEL,
         max_tokens: 1024,
         system,
         messages: sanitizedMessages,
@@ -71,11 +75,50 @@ export async function POST(request: NextRequest) {
     const data = await response.json()
 
     if (!response.ok) {
-      const message =
+      const errorMessage =
         typeof data?.error?.message === 'string'
           ? data.error.message
           : 'AI request failed'
-      return NextResponse.json({ error: message }, { status: response.status })
+      
+      // If error suggests invalid model, try fallback
+      if (errorMessage.includes('model') && MODEL !== FALLBACK_MODEL) {
+        console.log("[ORBIT] Model failed, trying fallback:", FALLBACK_MODEL)
+        
+        const fallbackResponse = await fetch(ANTHROPIC_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': ANTHROPIC_VERSION,
+          },
+          body: JSON.stringify({
+            model: FALLBACK_MODEL,
+            max_tokens: 1024,
+            system,
+            messages: sanitizedMessages,
+          }),
+        })
+
+        const fallbackData = await fallbackResponse.json()
+
+        if (fallbackResponse.ok) {
+          const textBlock = Array.isArray(fallbackData.content)
+            ? fallbackData.content.find(
+                (block: { type?: string; text?: string }) =>
+                  block?.type === 'text' && typeof block.text === 'string',
+              )
+            : null
+
+          const message = textBlock?.text
+
+          if (message) {
+            console.log("[ORBIT] Fallback model succeeded")
+            return NextResponse.json({ message, model: FALLBACK_MODEL })
+          }
+        }
+      }
+      
+      return NextResponse.json({ error: errorMessage }, { status: response.status })
     }
 
     const textBlock = Array.isArray(data.content)
@@ -94,7 +137,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ message })
+    return NextResponse.json({ message, model: MODEL })
   } catch {
     return NextResponse.json(
       { error: 'Failed to reach AI provider' },
