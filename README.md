@@ -14,6 +14,8 @@
 *A Claude-powered life companion that connects your daily habits → short goals → life vision,*
 *and tells you exactly what you're risking when you fall behind.*
 
+LINK TO USE THE DEPLOYED VERSION(still in testing) :- https://orbit-black.vercel.app/index.html
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](https://opensource.org/licenses/MIT)
 [![Built with Claude](https://img.shields.io/badge/Built%20with-Claude%20API-7C6AFA.svg)](https://anthropic.com)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org)
