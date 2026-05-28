@@ -781,6 +781,129 @@
       color: var(--text-muted);
     }
 
+    .memory-count-display {
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 2px;
+      opacity: 0.8;
+      font-weight: 500;
+    }
+
+    .free-usage-counter {
+      font-size: 11px;
+      color: #f97316;
+      margin-top: 2px;
+      opacity: 0.8;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    @keyframes counter-pulse {
+      0% {
+        opacity: 0.8;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.05);
+      }
+      100% {
+        opacity: 0.8;
+        transform: scale(1);
+      }
+    }
+
+    /* Premium Limit Modal */
+    .premium-modal {
+      background: linear-gradient(135deg, #0a0a0a 0%, #121212 50%, #0a0a0a 100%);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius-xl);
+      max-width: 480px;
+      box-shadow: 0 0 60px rgba(249, 115, 22, 0.3), 0 0 120px rgba(249, 115, 22, 0.15);
+    }
+
+    .premium-modal-header {
+      padding: 32px 32px 24px;
+      border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+    }
+
+    .premium-modal-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .premium-modal-body {
+      padding: 32px;
+    }
+
+    .premium-modal-text {
+      font-size: 16px;
+      color: var(--text-primary);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .premium-modal-subtext {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .premium-modal-footer {
+      padding: 24px 32px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .premium-btn-primary {
+      width: 100%;
+      padding: 14px 24px;
+      background: var(--accent);
+      color: var(--bg-primary);
+      border: none;
+      border-radius: var(--radius-lg);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 20px rgba(249, 115, 22, 0.4);
+    }
+
+    .premium-btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px rgba(249, 115, 22, 0.5);
+    }
+
+    .premium-btn-secondary {
+      width: 100%;
+      padding: 14px 24px;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .premium-btn-secondary:hover {
+      background: var(--bg-tertiary);
+      border-color: var(--border-light);
+      color: var(--text-primary);
+    }
+
+    .premium-modal-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 8px;
+    }
+
     .mock-badge {
       font-size: 8px;
       background: #1a1a1f;
@@ -1251,6 +1374,48 @@
     }
 
     .checklist-delete svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Overview Header & Actions */
+    .overview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .overview-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .orbit-action-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .orbit-action-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--border-light);
+      transform: translateY(-1px);
+    }
+
+    .orbit-action-btn svg {
       width: 14px;
       height: 14px;
     }
@@ -1989,6 +2154,305 @@
       background: var(--bg-hover);
     }
 
+    .btn-danger {
+      background: var(--doom-danger);
+      color: var(--bg-primary);
+      border: 1px solid var(--doom-danger);
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    }
+
+    /* Weekly Identity Report Modal */
+    .weekly-report-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .weekly-report-modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .weekly-report-modal {
+      background: linear-gradient(135deg, #0a0a0a 0%, #121212 50%, #0a0a0a 100%);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius-xl);
+      max-width: 600px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+      box-shadow: 0 0 60px rgba(249, 115, 22, 0.3), 0 0 120px rgba(249, 115, 22, 0.15);
+    }
+
+    .weekly-report-modal-overlay.active .weekly-report-modal {
+      transform: scale(1);
+      animation: weekly-report-appear 0.4s ease;
+    }
+
+    @keyframes weekly-report-appear {
+      0% {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.02);
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .weekly-report-header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(90deg, rgba(249, 115, 22, 0.1) 0%, transparent 100%);
+    }
+
+    .weekly-report-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .weekly-report-close {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+      border: 1px solid var(--border-color);
+    }
+
+    .weekly-report-close:hover {
+      background: var(--accent);
+      color: var(--bg-primary);
+      border-color: var(--accent);
+      transform: rotate(90deg);
+    }
+
+    .weekly-report-close svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .weekly-report-body {
+      padding: 32px;
+    }
+
+    .weekly-narrative {
+      font-size: 20px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      margin-bottom: 32px;
+      text-align: center;
+      font-weight: 500;
+      min-height: 80px;
+    }
+
+    .weekly-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .weekly-stat-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .weekly-stat-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(249, 115, 22, 0.15);
+    }
+
+    .weekly-stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .weekly-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+      font-family: var(--font-mono);
+    }
+
+    .weekly-report-footer {
+      padding: 20px 32px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: center;
+    }
+
+    .weekly-report-save {
+      padding: 14px 32px;
+      background: var(--accent);
+      color: var(--bg-primary);
+      border: none;
+      border-radius: var(--radius-lg);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .weekly-report-save:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+
+    /* Mobile responsive for weekly report */
+    @media (max-width: 768px) {
+      .weekly-report-modal {
+        width: 95%;
+        max-height: 95vh;
+      }
+
+      .weekly-report-header {
+        padding: 20px 24px;
+      }
+
+      .weekly-report-title {
+        font-size: 22px;
+      }
+
+      .weekly-report-body {
+        padding: 24px;
+      }
+
+      .weekly-narrative {
+        font-size: 18px;
+      }
+
+      .weekly-stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .weekly-stat-card {
+        padding: 16px;
+      }
+
+      .weekly-stat-value {
+        font-size: 20px;
+      }
+    }
+
+    /* Dev Test Panel */
+    .dev-test-panel {
+      display: none;
+      position: fixed;
+      bottom: 80px;
+      left: 20px;
+      background: rgba(10, 10, 10, 0.9);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      z-index: 9999;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .dev-test-panel.visible {
+      display: block;
+    }
+
+    .dev-panel-header {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-color);
+      cursor: move;
+      user-select: none;
+    }
+
+    .dev-panel-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .dev-btn {
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: left;
+    }
+
+    .dev-btn:hover {
+      background: var(--accent);
+      color: var(--bg-primary);
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .dev-btn-danger {
+      border-color: var(--doom-danger);
+      color: var(--doom-danger);
+    }
+
+    .dev-btn-danger:hover {
+      background: var(--doom-danger);
+      color: var(--bg-primary);
+    }
+
+    .dev-doom-buttons {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .dev-btn-small {
+      flex: 1;
+      text-align: center;
+    }
+
     /* Empty State */
     .empty-state {
       text-align: center;
@@ -2656,102 +3120,7 @@
       }
     }
 
-    /* Stakes Onboarding Overlay */
-    .stakes-onboarding-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: #0a0a0a;
-      z-index: 2000;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .stakes-onboarding-overlay.visible {
-      display: flex;
-    }
-
-    .stakes-onboarding-content {
-      max-width: 600px;
-      width: 90%;
-      padding: 40px;
-    }
-
-    .stakes-step h2 {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 24px;
-      text-align: center;
-    }
-
-    .stakes-step .stakes-question {
-      font-size: 1.25rem;
-      color: var(--text-secondary);
-      line-height: 1.6;
-      text-align: center;
-      margin-bottom: 32px;
-    }
-
-    .stakes-step .stakes-textarea {
-      width: 100%;
-      min-height: 150px;
-      padding: 16px;
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      color: var(--text-primary);
-      font-size: 1rem;
-      line-height: 1.6;
-      resize: vertical;
-      margin-bottom: 24px;
-    }
-
-    .stakes-step .stakes-textarea:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-
-    .stakes-step .stakes-textarea::placeholder {
-      color: var(--text-muted);
-    }
-
-    .stakes-actions {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-    }
-
-    .stakes-btn {
-      padding: 12px 32px;
-      background: var(--accent);
-      border: none;
-      border-radius: var(--radius-md);
-      color: white;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .stakes-btn:hover {
-      background: var(--accent-hover);
-    }
-
-    .stakes-skip {
-      padding: 12px 24px;
-      background: transparent;
-      border: none;
-      border-radius: var(--radius-md);
-      color: var(--text-muted);
-      font-size: 0.875rem;
-      cursor: pointer;
-      transition: color 0.15s ease;
-    }
-
-    .stakes-skip:hover {
-      color: var(--text-secondary);
-    }
+    /* Stakes Onboarding Overlay CSS REMOVED - using screen-stakes-onboarding only */
 
     /* Stakes Trigger Card */
     .stakes-trigger-card {
@@ -3701,6 +4070,27 @@
 
         <!-- Overview Screen -->
         <div class="screen" id="screen-overview">
+          <div class="overview-header">
+            <h2 class="section-title">Overview</h2>
+            <div class="overview-actions">
+              <button class="orbit-action-btn" id="export-orbit-btn" title="Export My Orbit">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7,10 12,15 17,10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export
+              </button>
+              <button class="orbit-action-btn" id="import-orbit-btn" title="Import Orbit">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17,8 12,3 7,8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Import
+              </button>
+            </div>
+          </div>
           <div class="overview-stats" id="overview-stats"></div>
           <div class="goals-section">
             <h2 class="section-title" style="margin-bottom: 16px;">Goal Progress</h2>
@@ -3983,6 +4373,8 @@ TUESDAY
         <div class="chat-info">
           <h3>ORBIT AI <span id="mock-badge" class="mock-badge">[MOCK]</span></h3>
           <span>still here with you</span>
+          <div id="memory-count-display" class="memory-count-display">🧠 0 facts stored</div>
+          <div id="free-usage-counter" class="free-usage-counter">10 / 10 free conversations left today</div>
         </div>
         <div class="doom-indicator" id="chat-doom-indicator">
           <span class="doom-percent" id="chat-doom-percent">0%</span>
@@ -4201,44 +4593,108 @@ TUESDAY
     <button id="test-reset">Reset all test data</button>
   </div>
 
-  <!-- Stakes Onboarding Overlay -->
-  <div class="stakes-onboarding-overlay" id="stakes-onboarding-overlay">
-    <div class="stakes-onboarding-content">
-      <div class="stakes-step" id="stakes-step-1">
-        <h2>What's actually at stake</h2>
-        <p class="stakes-question">Before we track anything — what happens to your life if you don't achieve your main goal this year?</p>
-        <textarea class="stakes-textarea" id="stakes-answer-1" placeholder="be honest, this stays private"></textarea>
-        <div class="stakes-actions">
-          <button class="stakes-btn" id="stakes-continue-1">Continue →</button>
-          <button class="stakes-skip" id="stakes-skip-1">Skip for now</button>
+  <!-- Clear Data Confirmation Modal -->
+  <div class="modal-overlay" id="clear-data-modal">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Delete All Data?</h2>
+        <button class="modal-close" id="close-clear-data-modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px;">
+          This will delete everything ORBIT knows about you — including <strong id="modal-facts-count" style="color: var(--accent);">0 facts</strong>, your stakes, your letter to future self, and <strong id="modal-history-days" style="color: var(--accent);">0 days</strong> of history.
+        </p>
+        <p style="color: var(--doom-danger); font-weight: 500;">This cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="keep-data-btn">Keep my data</button>
+        <button type="button" class="btn btn-danger" id="delete-everything-btn">Delete everything</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly Identity Report Modal -->
+  <div class="weekly-report-modal-overlay" id="weekly-report-modal">
+    <div class="weekly-report-modal">
+      <div class="weekly-report-header">
+        <h2 class="weekly-report-title">YOUR WEEK</h2>
+        <button class="weekly-report-close" id="weekly-report-close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="weekly-report-body">
+        <div class="weekly-narrative" id="weekly-narrative">
+          Loading your week...
+        </div>
+        <div class="weekly-stats-grid">
+          <div class="weekly-stat-card">
+            <div class="weekly-stat-label">Habits</div>
+            <div class="weekly-stat-value" id="stat-habits">0/0</div>
+          </div>
+          <div class="weekly-stat-card">
+            <div class="weekly-stat-label">Focus Sessions</div>
+            <div class="weekly-stat-value" id="stat-sessions">0</div>
+          </div>
+          <div class="weekly-stat-card">
+            <div class="weekly-stat-label">Goals Progressed</div>
+            <div class="weekly-stat-value" id="stat-goals">0/0</div>
+          </div>
+          <div class="weekly-stat-card">
+            <div class="weekly-stat-label">Doom Average</div>
+            <div class="weekly-stat-value" id="stat-doom">0%</div>
+          </div>
         </div>
       </div>
-      <div class="stakes-step" id="stakes-step-2" style="display: none;">
-        <h2>What's actually at stake</h2>
-        <p class="stakes-question">Who in your life would be affected if you fail?</p>
-        <textarea class="stakes-textarea" id="stakes-answer-2" placeholder="be honest, this stays private"></textarea>
-        <div class="stakes-actions">
-          <button class="stakes-btn" id="stakes-continue-2">Continue →</button>
-          <button class="stakes-skip" id="stakes-skip-2">Skip for now</button>
-        </div>
+      <div class="weekly-report-footer">
+        <button class="weekly-report-save" id="weekly-report-save">Save to journal</button>
       </div>
-      <div class="stakes-step" id="stakes-step-3" style="display: none;">
-        <h2>What's actually at stake</h2>
-        <p class="stakes-question">What does your life look like in 3 years if you keep going at your current pace — honestly?</p>
-        <textarea class="stakes-textarea" id="stakes-answer-3" placeholder="be honest, this stays private"></textarea>
-        <div class="stakes-actions">
-          <button class="stakes-btn" id="stakes-continue-3">Continue →</button>
-          <button class="stakes-skip" id="stakes-skip-3">Skip for now</button>
-        </div>
+    </div>
+  </div>
+
+  <!-- Premium Limit Modal -->
+  <div class="modal-overlay" id="premium-limit-modal">
+    <div class="modal premium-modal">
+      <div class="premium-modal-header">
+        <h2 class="premium-modal-title">Today's free conversations are finished.</h2>
       </div>
-      <div class="stakes-step" id="stakes-step-4" style="display: none;">
-        <h2>What's actually at stake</h2>
-        <p class="stakes-question">What does it look like if you actually finish what you're building?</p>
-        <textarea class="stakes-textarea" id="stakes-answer-4" placeholder="be honest, this stays private"></textarea>
-        <div class="stakes-actions">
-          <button class="stakes-btn" id="stakes-finish">Finish — Enter ORBIT</button>
-          <button class="stakes-skip" id="stakes-skip-4">Skip for now</button>
-        </div>
+      <div class="premium-modal-body">
+        <p class="premium-modal-text">
+          ORBIT remembers everything —<br>
+          but deeper conversations require ORBIT Pro.
+        </p>
+        <p class="premium-modal-subtext">
+          Come back tomorrow, or unlock unlimited access.
+        </p>
+      </div>
+      <div class="premium-modal-footer">
+        <button type="button" class="premium-btn-primary" id="premium-upgrade-btn">Upgrade to Pro</button>
+        <button type="button" class="premium-btn-secondary" id="premium-comeback-btn">Come back tomorrow</button>
+        <p class="premium-modal-note">Free conversations reset daily.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dev Test Panel -->
+  <div class="dev-test-panel" id="dev-test-panel">
+    <div class="dev-panel-header">DEV TEST PANEL</div>
+    <div class="dev-panel-buttons">
+      <button class="dev-btn" id="dev-bad-day">Trigger Bad Day Protocol</button>
+      <button class="dev-btn" id="dev-miss-me">Trigger Miss Me Message</button>
+      <button class="dev-btn" id="dev-weekly-report">Trigger Weekly Report</button>
+      <button class="dev-btn" id="dev-level-up">Trigger Level Up</button>
+      <button class="dev-btn dev-btn-danger" id="dev-reset">Reset All Data</button>
+      <div class="dev-doom-buttons">
+        <button class="dev-btn dev-btn-small" id="dev-doom-0">Doom: 0%</button>
+        <button class="dev-btn dev-btn-small" id="dev-doom-50">Doom: 50%</button>
+        <button class="dev-btn dev-btn-small" id="dev-doom-100">Doom: 100%</button>
       </div>
     </div>
   </div>

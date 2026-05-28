@@ -94,6 +94,10 @@
     QUICK_TASKS: 'orbit_quick_tasks',
     TIMETABLE_BLOCKS: 'orbit_timetable_blocks',
     LETTERS: 'orbit_letters',
+    WEEKLY_REPORTS: 'orbit_weekly_reports',
+    LAST_REPORT_DATE: 'orbit_last_report_date',
+    ONBOARDING_COMPLETE: 'orbit_onboarding_complete',
+    FREE_USAGE: 'orbit_free_usage',
   };
 
   const DOOM_RGBA = {
@@ -385,6 +389,101 @@
   }
 
   // ============================================================================
+  // FREE PLAN USAGE TRACKING
+  // ============================================================================
+  // TODO: replace with server-side usage tracking
+
+  const FREE_PLAN_DAILY_LIMIT = 10;
+
+  function getFreeUsage() {
+    // TODO: replace with server-side usage tracking
+    const usage = loadData(STORAGE_KEYS.FREE_USAGE, {
+      date: new Date().toISOString().split('T')[0],
+      count: 0
+    });
+    return usage;
+  }
+
+  function saveFreeUsage(usage) {
+    // TODO: replace with server-side usage tracking
+    saveData(STORAGE_KEYS.FREE_USAGE, usage);
+  }
+
+  function checkAndResetDailyUsage() {
+    // TODO: replace with server-side usage tracking
+    const usage = getFreeUsage();
+    const today = new Date().toISOString().split('T')[0];
+
+    if (usage.date !== today) {
+      // Date changed, reset count
+      usage.date = today;
+      usage.count = 0;
+      saveFreeUsage(usage);
+    }
+
+    return usage;
+  }
+
+  function incrementUsageCount() {
+    // TODO: replace with server-side usage tracking
+    const usage = checkAndResetDailyUsage();
+    usage.count += 1;
+    saveFreeUsage(usage);
+    return usage;
+  }
+
+  function getRemainingConversations() {
+    // TODO: replace with server-side usage tracking
+    const usage = checkAndResetDailyUsage();
+    return Math.max(0, FREE_PLAN_DAILY_LIMIT - usage.count);
+  }
+
+  function hasReachedLimit() {
+    // TODO: replace with server-side usage tracking
+    return getRemainingConversations() <= 0;
+  }
+
+  function getUsageCounterColor(remaining) {
+    if (remaining > 5) return '#f97316'; // muted orange
+    if (remaining > 0) return '#ea580c'; // stronger orange
+    return '#ef4444'; // soft red/orange
+  }
+
+  function updateUsageCounterDisplay() {
+    const counterEl = document.getElementById('free-usage-counter');
+    if (!counterEl) return;
+
+    const remaining = getRemainingConversations();
+    const color = getUsageCounterColor(remaining);
+    
+    counterEl.textContent = `${remaining} / ${FREE_PLAN_DAILY_LIMIT} free conversations left today`;
+    counterEl.style.color = color;
+    
+    // Add subtle animation when counter decreases
+    counterEl.style.animation = 'none';
+    counterEl.offsetHeight; // Trigger reflow
+    counterEl.style.animation = 'counter-pulse 0.3s ease';
+  }
+
+  function showPremiumModal() {
+    const modal = document.getElementById('premium-limit-modal');
+    if (!modal) return;
+
+    modal.classList.add('active');
+    modal.style.pointerEvents = 'auto';
+    modal.style.opacity = '1';
+  }
+
+  function hidePremiumModal() {
+    const modal = document.getElementById('premium-limit-modal');
+    if (!modal) return;
+
+    modal.classList.remove('active');
+    modal.style.pointerEvents = 'none';
+    modal.style.opacity = '0';
+  }
+
+  // ============================================================================
   // STAKES ENGINE STORAGE LAYER
   // ============================================================================
 
@@ -526,6 +625,7 @@
   let onboardingAnswers = {};
 
   function showStakesOnboarding() {
+    console.log("[ORBIT] onboarding screen shown");
     const onboardingScreen = document.getElementById('screen-stakes-onboarding');
     const todayScreen = document.getElementById('screen-today');
     
@@ -599,7 +699,10 @@
     // Save all answers to life_context
     updateLifeContext(onboardingAnswers);
     
-    // Mark onboarding as complete
+    // Mark onboarding as complete in dedicated localStorage flag
+    localStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
+    
+    // Also mark in stakes data for backward compatibility
     const currentStakes = getOrbitStakes();
     currentStakes.onboarding_complete = true;
     saveOrbitStakes(currentStakes);
@@ -616,11 +719,14 @@
   }
 
   function checkStakesOnboarding() {
-    const currentStakes = getOrbitStakes();
+    // Check the dedicated onboarding completion flag in localStorage
+    const onboardingComplete = localStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE);
     
     // Only show onboarding if not completed
-    if (!currentStakes.onboarding_complete) {
+    if (onboardingComplete !== 'true') {
       showStakesOnboarding();
+    } else {
+      console.log("[ORBIT] onboarding already complete, skipping");
     }
   }
 
@@ -823,6 +929,72 @@
       total_hours_logged: goals.reduce((sum, g) => sum + (Number(g.logged_hours) || 0), 0),
     };
     saveData(STORAGE_KEYS.MEMORY, memory);
+    updateMemoryCountDisplay();
+  }
+
+  function getMemoryFactCount() {
+    const memoryData = loadData(STORAGE_KEYS.MEMORY, {});
+    return Object.keys(memoryData).filter(key => key !== 'last_updated').length;
+  }
+
+  function getHistoryDaysCount() {
+    const sessionsData = loadData(STORAGE_KEYS.SESSIONS, []);
+    if (!Array.isArray(sessionsData) || sessionsData.length === 0) return 0;
+    
+    const uniqueDays = new Set();
+    sessionsData.forEach(session => {
+      if (session.logged_at) {
+        const date = new Date(session.logged_at);
+        if (isValidDate(date)) {
+          uniqueDays.add(date.toDateString());
+        }
+      }
+    });
+    return uniqueDays.size;
+  }
+
+  function updateMemoryCountDisplay() {
+    const displayEl = document.getElementById('memory-count-display');
+    if (!displayEl) return;
+    
+    const count = getMemoryFactCount();
+    displayEl.textContent = `🧠 ${count} facts stored`;
+  }
+
+  function showClearDataModal(onConfirm) {
+    const modal = document.getElementById('clear-data-modal');
+    const factsCountEl = document.getElementById('modal-facts-count');
+    const historyDaysEl = document.getElementById('modal-history-days');
+    const closeBtn = document.getElementById('close-clear-data-modal');
+    const keepDataBtn = document.getElementById('keep-data-btn');
+    const deleteBtn = document.getElementById('delete-everything-btn');
+
+    if (!modal) return;
+
+    const factsCount = getMemoryFactCount();
+    const historyDays = getHistoryDaysCount();
+
+    factsCountEl.textContent = `${factsCount} facts`;
+    historyDaysEl.textContent = `${historyDays} days`;
+
+    modal.classList.add('active');
+
+    const closeModal = () => {
+      modal.classList.remove('active');
+    };
+
+    const handleConfirm = () => {
+      closeModal();
+      if (onConfirm) onConfirm();
+    };
+
+    closeBtn.onclick = closeModal;
+    keepDataBtn.onclick = closeModal;
+    deleteBtn.onclick = handleConfirm;
+
+    modal.onclick = (e) => {
+      if (e.target === modal) closeModal();
+    };
   }
 
   /**
@@ -1261,6 +1433,12 @@
    * @returns {number} Final doom score (0-100)
    */
   function calculateDoom() {
+    // Check for dev override
+    const devDoomOverride = localStorage.getItem('orbit_prev_doom');
+    if (devDoomOverride !== null) {
+      return parseInt(devDoomOverride, 10);
+    }
+
     // No goals or visions = no doom
     if (goals.length === 0 && visions.length === 0) return 0;
 
@@ -2636,10 +2814,12 @@
       });
 
       document.getElementById('test-reset').addEventListener('click', () => {
-        goals = [];
-        saveData(STORAGE_KEYS.GOALS, goals);
-        renderGoals();
-        updateDoomMeter();
+        showClearDataModal(() => {
+          goals = [];
+          saveData(STORAGE_KEYS.GOALS, goals);
+          renderGoals();
+          updateDoomMeter();
+        });
       });
     }
   }
@@ -2694,6 +2874,12 @@
     if (screen === 'dayplanner') {
       if (typeof initDayPlanner === 'function') {
         initDayPlanner();
+      }
+    }
+
+    if (screen === 'vision') {
+      if (typeof renderLetters === 'function') {
+        renderLetters();
       }
     }
 
@@ -4134,6 +4320,12 @@ RULES:
     const message = chatInput.value.trim();
     if (!message) return;
 
+    // Check if user has reached the free plan limit
+    if (hasReachedLimit()) {
+      showPremiumModal();
+      return;
+    }
+
     chatPending = true;
     chatInput.disabled = true;
 
@@ -4153,6 +4345,17 @@ RULES:
       removeTypingIndicator();
       addMessage(response, false);
       updateMemory();
+      
+      // Increment usage count after successful AI response
+      const usage = incrementUsageCount();
+      updateUsageCounterDisplay();
+      
+      // Add emotional touch after final free message
+      if (usage.count === FREE_PLAN_DAILY_LIMIT) {
+        setTimeout(() => {
+          addMessage("I'll still be here tomorrow.", false);
+        }, 500);
+      }
     } catch (error) {
       console.error('AI Error:', error);
       removeTypingIndicator();
@@ -4170,11 +4373,14 @@ RULES:
   localStorage.removeItem('orbit_api_key');
 
   syncVisionLinkedGoals();
+  checkLetterReveals();
   renderChecklists();
   renderGoals();
   renderVisions();
   updateDoomMeter();
   restoreChatUI();
+  updateMemoryCountDisplay();
+  updateUsageCounterDisplay();
   window.dispatchEvent(new CustomEvent('orbit:refresh'));
 
   // Auto-recalculate doom every 60 seconds
@@ -4195,80 +4401,8 @@ RULES:
     });
   }
 
-  // Stakes onboarding flow
-  function initStakesOnboarding() {
-    const overlay = document.getElementById('stakes-onboarding-overlay');
-    if (!overlay) return;
-
-    // Only show if onboarding is not complete
-    if (stakes.onboarding_complete) {
-      return;
-    }
-
-    overlay.classList.add('visible');
-
-    let currentStep = 1;
-    const answers = {};
-
-    function showStep(step) {
-      for (let i = 1; i <= 4; i++) {
-        const stepEl = document.getElementById(`stakes-step-${i}`);
-        if (stepEl) {
-          stepEl.style.display = i === step ? 'block' : 'none';
-        }
-      }
-    }
-
-    function saveAndContinue(step) {
-      const answerEl = document.getElementById(`stakes-answer-${step}`);
-      if (answerEl) {
-        answers[`answer_${step}`] = answerEl.value;
-      }
-
-      if (step < 4) {
-        currentStep = step + 1;
-        showStep(currentStep);
-      } else {
-        finishOnboarding();
-      }
-    }
-
-    function skipOnboarding() {
-      stakes.onboarding_complete = true;
-      saveData(STORAGE_KEYS.STAKES, stakes);
-      overlay.classList.remove('visible');
-    }
-
-    function finishOnboarding() {
-      stakes.life_context.what_failure_looks_like = answers.answer_1 || '';
-      stakes.life_context.who_depends_on_you = answers.answer_2 || '';
-      stakes.life_context.biggest_fear = answers.answer_3 || '';
-      stakes.life_context.what_success_unlocks = answers.answer_4 || '';
-      stakes.onboarding_complete = true;
-      saveData(STORAGE_KEYS.STAKES, stakes);
-      overlay.classList.remove('visible');
-    }
-
-    // Add event listeners
-    for (let i = 1; i <= 4; i++) {
-      const continueBtn = document.getElementById(`stakes-continue-${i}`);
-      const skipBtn = document.getElementById(`stakes-skip-${i}`);
-      
-      if (continueBtn) {
-        continueBtn.addEventListener('click', () => saveAndContinue(i));
-      }
-      if (skipBtn) {
-        skipBtn.addEventListener('click', skipOnboarding);
-      }
-    }
-
-    const finishBtn = document.getElementById('stakes-finish');
-    if (finishBtn) {
-      finishBtn.addEventListener('click', () => saveAndContinue(4));
-    }
-  }
-
-  initStakesOnboarding();
+  // Stakes onboarding overlay system REMOVED - using screen-stakes-onboarding only
+  console.log("[ORBIT] overlay onboarding blocked");
 
   // Stakes trigger card button handlers
   const stakesTriggerAction = document.getElementById('stakes-trigger-action');
@@ -4345,6 +4479,33 @@ RULES:
 
   // Check stakes onboarding on app initialization
   checkStakesOnboarding();
+
+  // Premium modal event listeners
+  const premiumUpgradeBtn = document.getElementById('premium-upgrade-btn');
+  const premiumComebackBtn = document.getElementById('premium-comeback-btn');
+  const premiumModal = document.getElementById('premium-limit-modal');
+
+  if (premiumUpgradeBtn) {
+    premiumUpgradeBtn.addEventListener('click', () => {
+      // TODO: Implement upgrade flow
+      console.log('Upgrade to Pro clicked');
+      hidePremiumModal();
+    });
+  }
+
+  if (premiumComebackBtn) {
+    premiumComebackBtn.addEventListener('click', () => {
+      hidePremiumModal();
+    });
+  }
+
+  if (premiumModal) {
+    premiumModal.addEventListener('click', (e) => {
+      if (e.target === premiumModal) {
+        hidePremiumModal();
+      }
+    });
+  }
 
   // Show mock badge if in mock mode
   if (MOCK_MODE) {
@@ -5153,4 +5314,730 @@ RULES:
     setInterval(checkMidnight, 60000);
     checkMidnight(); // Check immediately
   }
+
+  // ============================================================================
+  // WEEKLY IDENTITY REPORT SYSTEM
+  // ============================================================================
+
+  /**
+   * Calculate weekly statistics for the identity report
+   * @returns {Object} Weekly stats including habits, sessions, goals, doom
+   */
+  function calculateWeeklyStats() {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Habits completed this week
+    const allDailyTasks = loadData(STORAGE_KEYS.DAILY_CHECKLIST, []);
+    const habitsCompletedThisWeek = allDailyTasks.filter(task => {
+      if (!task.completed_at) return false;
+      const completedDate = new Date(task.completed_at);
+      return completedDate >= sevenDaysAgo && completedDate <= now;
+    }).length;
+    const totalPossibleHabits = allDailyTasks.length * 7; // Approximate total possible
+
+    // Focus sessions logged this week
+    const allSessions = loadData(STORAGE_KEYS.SESSIONS, []);
+    const focusSessionsThisWeek = allSessions.filter(session => {
+      if (!session.logged_at) return false;
+      const sessionDate = new Date(session.logged_at);
+      return sessionDate >= sevenDaysAgo && sessionDate <= now && session.type === 'pomodoro';
+    }).length;
+
+    // Goals progressed this week
+    const allGoals = loadData(STORAGE_KEYS.GOALS, []);
+    const goalsProgressed = allGoals.filter(goal => {
+      if (!goal.logged_hours) return false;
+      const loggedHours = Number(goal.logged_hours) || 0;
+      return loggedHours > 0;
+    }).length;
+
+    // Doom average this week (we'll use current doom as approximation)
+    const doomAverage = calculateDoom();
+
+    return {
+      habitsCompleted: habitsCompletedThisWeek,
+      totalPossibleHabits: totalPossibleHabits || 1,
+      focusSessions: focusSessionsThisWeek,
+      goalsProgressed: goalsProgressed,
+      totalGoals: allGoals.length,
+      doomAverage: doomAverage,
+      weekStart: sevenDaysAgo.toISOString(),
+      weekEnd: now.toISOString()
+    };
+  }
+
+  /**
+   * Check if weekly report should trigger
+   * Triggers if 7+ days have passed since last_report_date
+   * or if it doesn't exist and user has 7+ days of data
+   * @returns {boolean} True if report should be generated
+   */
+  function shouldTriggerWeeklyReport() {
+    const lastReportDate = localStorage.getItem(STORAGE_KEYS.LAST_REPORT_DATE);
+    const now = new Date();
+
+    if (!lastReportDate) {
+      // Check if user has 7+ days of data
+      const sessions = loadData(STORAGE_KEYS.SESSIONS, []);
+      if (sessions.length === 0) return false;
+
+      const firstSession = sessions[0];
+      if (!firstSession.logged_at) return false;
+
+      const firstSessionDate = new Date(firstSession.logged_at);
+      const daysSinceFirstSession = (now - firstSessionDate) / (24 * 60 * 60 * 1000);
+      return daysSinceFirstSession >= 7;
+    }
+
+    const lastReport = new Date(lastReportDate);
+    const daysSinceLastReport = (now - lastReport) / (24 * 60 * 60 * 1000);
+    return daysSinceLastReport >= 7;
+  }
+
+  /**
+   * Generate AI narrative for the weekly report
+   * @param {Object} weeklyStats - Weekly statistics
+   * @returns {Promise<string>} AI-generated narrative
+   */
+  async function generateWeeklyNarrative(weeklyStats) {
+    const stakesData = loadData(STORAGE_KEYS.STAKES, {
+      life_context: {},
+      goal_stakes: {},
+      onboarding_complete: false,
+    });
+
+    const allGoals = loadData(STORAGE_KEYS.GOALS, []);
+
+    // Build stakes context
+    let stakesContext = '';
+    if (stakesData.onboarding_complete && Object.keys(stakesData.life_context).length > 0) {
+      const lifeContextStr = Object.entries(stakesData.life_context)
+        .filter(([_, value]) => value && value.trim())
+        .map(([key, value]) => `- ${key.replace(/_/g, ' ')}: ${value}`)
+        .join('\n');
+      stakesContext = `\nStakes context:\n${lifeContextStr}`;
+    }
+
+    // Build goals context
+    const goalsContext = allGoals.map(g => `- ${g.title}`).join('\n') || 'No goals set';
+
+    const prompt = `Based on this user's week:
+- Habits completed: ${weeklyStats.habitsCompleted}/${weeklyStats.totalPossibleHabits}
+- Focus sessions: ${weeklyStats.focusSessions}
+- Goals progressed: ${weeklyStats.goalsProgressed}/${weeklyStats.totalGoals}
+- Doom average: ${weeklyStats.doomAverage}%
+
+Their goals:
+${goalsContext}
+
+Their stakes:${stakesContext}
+
+Write a 3-4 sentence identity narrative — not a metrics summary. Who were they this week? What pattern showed up? End with one honest sentence about what next week could be. Speak directly to them. No fluff.`;
+
+    if (MOCK_MODE) {
+      await new Promise(r => setTimeout(r, 800));
+      return getMockWeeklyNarrative(weeklyStats);
+    }
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: 'You are ORBIT — a life companion AI. Write honest, direct identity narratives. No fluff. Speak directly to the user.',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(typeof data.error === 'string' ? data.error : 'Could not generate narrative');
+    }
+
+    return data.message;
+  }
+
+  /**
+   * Get mock narrative for testing
+   */
+  function getMockWeeklyNarrative(weeklyStats) {
+    if (weeklyStats.doomAverage > 50) {
+      return "This week you were someone who felt the pressure but kept showing up. The pattern: you started strong, drifted mid-week, then pushed hard at the end. Next week could be about consistency rather than last-minute intensity.";
+    }
+    return "This week you were someone building momentum. The pattern: steady progress on what matters, even when it felt slow. Next week could be about trusting that pace.";
+  }
+
+  /**
+   * Show weekly report modal
+   * @param {Object} weeklyStats - Weekly statistics
+   * @param {string} narrative - AI-generated narrative
+   */
+  function showWeeklyReportModal(weeklyStats, narrative) {
+    const modal = document.getElementById('weekly-report-modal');
+    if (!modal) return;
+
+    // Update modal content
+    const narrativeEl = document.getElementById('weekly-narrative');
+    const habitsEl = document.getElementById('stat-habits');
+    const sessionsEl = document.getElementById('stat-sessions');
+    const goalsEl = document.getElementById('stat-goals');
+    const doomEl = document.getElementById('stat-doom');
+
+    if (narrativeEl) narrativeEl.textContent = narrative;
+    if (habitsEl) habitsEl.textContent = `${weeklyStats.habitsCompleted}/${weeklyStats.totalPossibleHabits}`;
+    if (sessionsEl) sessionsEl.textContent = weeklyStats.focusSessions;
+    if (goalsEl) goalsEl.textContent = `${weeklyStats.goalsProgressed}/${weeklyStats.totalGoals}`;
+    if (doomEl) doomEl.textContent = `${weeklyStats.doomAverage}%`;
+
+    modal.classList.add('active');
+  }
+
+  /**
+   * Close weekly report modal and set last_report_date
+   */
+  function closeWeeklyReport() {
+    const modal = document.getElementById('weekly-report-modal');
+    if (modal) {
+      modal.classList.remove('active');
+    }
+
+    // Set last_report_date to today
+    localStorage.setItem(STORAGE_KEYS.LAST_REPORT_DATE, new Date().toISOString());
+  }
+
+  /**
+   * Save weekly report to journal
+   * @param {Object} weeklyStats - Weekly statistics
+   * @param {string} narrative - AI-generated narrative
+   */
+  function saveWeeklyReportToJournal(weeklyStats, narrative) {
+    const reports = loadData(STORAGE_KEYS.WEEKLY_REPORTS, []);
+    const report = {
+      id: generateId(),
+      date: new Date().toISOString(),
+      stats: weeklyStats,
+      narrative: narrative
+    };
+    reports.push(report);
+    saveData(STORAGE_KEYS.WEEKLY_REPORTS, reports);
+
+    alert('Report saved to journal');
+  }
+
+  /**
+   * Generate and show weekly report
+   */
+  async function generateWeeklyReport() {
+    try {
+      const weeklyStats = calculateWeeklyStats();
+      const narrative = await generateWeeklyNarrative(weeklyStats);
+      showWeeklyReportModal(weeklyStats, narrative);
+    } catch (error) {
+      console.error('Failed to generate weekly report:', error);
+    }
+  }
+
+  /**
+   * Check and trigger weekly report on app load
+   */
+  function checkWeeklyReportTrigger() {
+    if (shouldTriggerWeeklyReport()) {
+      generateWeeklyReport();
+    }
+  }
+
+  // Weekly report modal event listeners
+  const weeklyReportCloseBtn = document.getElementById('weekly-report-close');
+  const weeklyReportSaveBtn = document.getElementById('weekly-report-save');
+
+  if (weeklyReportCloseBtn) {
+    weeklyReportCloseBtn.addEventListener('click', closeWeeklyReport);
+  }
+
+  if (weeklyReportSaveBtn) {
+    weeklyReportSaveBtn.addEventListener('click', () => {
+      const narrativeEl = document.getElementById('weekly-narrative');
+      const weeklyStats = calculateWeeklyStats();
+      if (narrativeEl) {
+        saveWeeklyReportToJournal(weeklyStats, narrativeEl.textContent);
+      }
+    });
+  }
+
+  // Check weekly report trigger on app load
+  checkWeeklyReportTrigger();
+
+  // ============================================================================
+  // DEV TEST PANEL
+  // ============================================================================
+
+  /**
+   * Initialize dev test panel if ?dev=true is in URL
+   */
+  function initDevTestPanel() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isDevMode = urlParams.get('dev') === 'true';
+    const devPanel = document.getElementById('dev-test-panel');
+
+    if (!devPanel) return;
+
+    if (isDevMode) {
+      devPanel.classList.add('visible');
+    }
+
+    // Make panel draggable
+    const devPanelHeader = devPanel.querySelector('.dev-panel-header');
+    if (devPanelHeader) {
+      let isDragging = false;
+      let startX, startY, initialX, initialY;
+
+      devPanelHeader.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        initialX = devPanel.offsetLeft;
+        initialY = devPanel.offsetTop;
+        devPanel.style.bottom = 'auto';
+        devPanel.style.right = 'auto';
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        devPanel.style.left = `${initialX + dx}px`;
+        devPanel.style.top = `${initialY + dy}px`;
+      });
+
+      document.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+    }
+
+    // Event handlers for dev panel buttons
+    document.getElementById('dev-bad-day')?.addEventListener('click', () => {
+      // Trigger Bad Day Protocol - sets doom to 85%, triggers AI message
+      localStorage.setItem('orbit_prev_doom', '85');
+      updateDoomMeter();
+      const doomRec = loadData(STORAGE_KEYS.DOOM_RECOMMENDATIONS, {
+        triggered: [],
+        lastRecommendation: null,
+        lastDoom: 0,
+        lastContextCheck: null
+      });
+      doomRec.triggered = []; // Reset to trigger recommendation
+      saveData(STORAGE_KEYS.DOOM_RECOMMENDATIONS, doomRec);
+      checkDoomRecommendationTriggers(85);
+    });
+
+    document.getElementById('dev-miss-me')?.addEventListener('click', () => {
+      // Trigger Miss Me Message - sets last_seen to 3 days ago, reloads
+      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      localStorage.setItem('orbit_last_seen', threeDaysAgo);
+      location.reload();
+    });
+
+    document.getElementById('dev-weekly-report')?.addEventListener('click', () => {
+      // Trigger Weekly Report - sets last_report_date to 8 days ago, reloads
+      const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+      localStorage.setItem(STORAGE_KEYS.LAST_REPORT_DATE, eightDaysAgo);
+      location.reload();
+    });
+
+    document.getElementById('dev-level-up')?.addEventListener('click', () => {
+      // Trigger Level Up - adds 100 orbit points, triggers level animation
+      const currentSessionPoints = parseInt(localStorage.getItem('orbit_session_points_ui') || '0', 10);
+      const currentHabitPoints = parseInt(localStorage.getItem('orbit_habit_points_ui') || '0', 10);
+      localStorage.setItem('orbit_session_points_ui', String(currentSessionPoints + 50));
+      localStorage.setItem('orbit_habit_points_ui', String(currentHabitPoints + 50));
+      updateDoomMeter();
+      alert('Added 100 orbit points. Level animation should trigger.');
+    });
+
+    document.getElementById('dev-reset')?.addEventListener('click', () => {
+      // Reset All Data - clears localStorage with confirmation
+      if (confirm('Are you sure you want to reset ALL data? This cannot be undone.')) {
+        localStorage.clear();
+        location.reload();
+      }
+    });
+
+    document.getElementById('dev-doom-0')?.addEventListener('click', () => {
+      // Set Doom to 0%
+      localStorage.setItem('orbit_prev_doom', '0');
+      updateDoomMeter();
+    });
+
+    document.getElementById('dev-doom-50')?.addEventListener('click', () => {
+      // Set Doom to 50%
+      localStorage.setItem('orbit_prev_doom', '50');
+      updateDoomMeter();
+    });
+
+    document.getElementById('dev-doom-100')?.addEventListener('click', () => {
+      // Set Doom to 100%
+      localStorage.setItem('orbit_prev_doom', '100');
+      updateDoomMeter();
+    });
+  }
+
+  // ============================================================================
+  // EXPORT / IMPORT SYSTEM
+  // ============================================================================
+
+  /**
+   * Gather all ORBIT-related localStorage data
+   * @returns {Object} All ORBIT data from localStorage
+   */
+  function gatherOrbitData() {
+    const orbitData = {};
+    const orbitPrefix = 'orbit_';
+    
+    // Iterate through all localStorage keys
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      // Only collect ORBIT-related keys
+      if (key && key.startsWith(orbitPrefix)) {
+        try {
+          const value = localStorage.getItem(key);
+          orbitData[key] = value;
+        } catch (err) {
+          console.warn(`Failed to read ${key}:`, err);
+        }
+      }
+    }
+    
+    return orbitData;
+  }
+
+  /**
+   * Export ORBIT data as JSON file
+   */
+  function exportOrbitData() {
+    try {
+      // Gather all ORBIT data
+      const data = gatherOrbitData();
+      
+      // Calculate metadata
+      const orbitScore = getTotalPoints();
+      const factsStored = getMemoryFactCount();
+      const daysTracked = getHistoryDaysCount();
+      
+      // Build export object
+      const exportObj = {
+        version: "2.0",
+        exported_at: new Date().toISOString(),
+        app: "ORBIT",
+        identity_score: orbitScore,
+        facts_stored: factsStored,
+        days_tracked: daysTracked,
+        data: data
+      };
+      
+      // Create JSON string
+      const jsonString = JSON.stringify(exportObj, null, 2);
+      
+      // Create blob and download
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      
+      // Generate filename with date
+      const date = new Date().toISOString().split('T')[0];
+      a.href = url;
+      a.download = `orbit-memory-capsule-${date}.json`;
+      
+      // Trigger download
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      // Show success message
+      showExportSuccess();
+      
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Export failed. Please try again.');
+    }
+  }
+
+  /**
+   * Show success toast after export
+   */
+  function showExportSuccess() {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--accent);
+      color: var(--bg-primary);
+      padding: 12px 24px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+      z-index: 10000;
+      animation: slide-up 0.3s ease forwards;
+    `;
+    toast.textContent = 'Your Orbit was saved.';
+    
+    document.body.appendChild(toast);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      toast.style.animation = 'slide-down 0.3s ease forwards';
+      setTimeout(() => {
+        document.body.removeChild(toast);
+      }, 300);
+    }, 3000);
+  }
+
+  /**
+   * Open file picker for import
+   */
+  function importOrbitData() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const content = event.target.result;
+          const importObj = JSON.parse(content);
+          
+          // Validate import object
+          if (!importObj.version || !importObj.data) {
+            throw new Error('Invalid ORBIT backup file');
+          }
+          
+          // Show confirmation modal
+          showImportConfirmation(importObj, file.name);
+          
+        } catch (err) {
+          console.error('Import validation failed:', err);
+          showImportError();
+        }
+      };
+      
+      reader.onerror = () => {
+        console.error('File read failed');
+        showImportError();
+      };
+      
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  }
+
+  /**
+   * Show confirmation modal before import
+   * @param {Object} importObj - The parsed import object
+   * @param {string} fileName - The name of the imported file
+   */
+  function showImportConfirmation(importObj, fileName) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('import-confirm-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'import-confirm-modal';
+      modal.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      `;
+      
+      modal.innerHTML = `
+        <div style="
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-lg);
+          padding: 32px;
+          max-width: 480px;
+          width: 90%;
+          text-align: center;
+        ">
+          <h3 style="
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+          ">Restore Orbit Backup?</h3>
+          <p style="
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+          ">Importing will replace your current ORBIT memory, goals, history, reports, and emotional data with the selected backup.<br><br><strong>This action cannot be undone.</strong></p>
+          <div style="
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+          ">
+            <button id="import-cancel-btn" style="
+              padding: 12px 24px;
+              background: var(--bg-tertiary);
+              color: var(--text-primary);
+              border: 1px solid var(--border-color);
+              border-radius: var(--radius-md);
+              font-size: 14px;
+              font-weight: 500;
+              cursor: pointer;
+              transition: all 0.15s ease;
+            ">Cancel</button>
+            <button id="import-confirm-btn" style="
+              padding: 12px 24px;
+              background: #dc2626;
+              color: white;
+              border: none;
+              border-radius: var(--radius-md);
+              font-size: 14px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.15s ease;
+            ">Restore Orbit</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Add event listeners
+      document.getElementById('import-cancel-btn').addEventListener('click', () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.style.opacity = '0', 10);
+        setTimeout(() => modal.style.pointerEvents = 'none', 300);
+      });
+      
+      document.getElementById('import-confirm-btn').addEventListener('click', () => {
+        performImport(importObj);
+      });
+      
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('active');
+          setTimeout(() => modal.style.opacity = '0', 10);
+          setTimeout(() => modal.style.pointerEvents = 'none', 300);
+        }
+      });
+    }
+    
+    // Show modal
+    modal.style.pointerEvents = 'auto';
+    modal.style.opacity = '1';
+    modal.classList.add('active');
+  }
+
+  /**
+   * Perform the actual import
+   * @param {Object} importObj - The validated import object
+   */
+  function performImport(importObj) {
+    try {
+      // Import all data from the backup
+      const data = importObj.data;
+      
+      for (const key in data) {
+        if (data.hasOwnProperty(key)) {
+          localStorage.setItem(key, data[key]);
+        }
+      }
+      
+      // Hide modal
+      const modal = document.getElementById('import-confirm-modal');
+      if (modal) {
+        modal.style.opacity = '0';
+        setTimeout(() => modal.style.pointerEvents = 'none', 300);
+      }
+      
+      // Reload app to apply changes
+      setTimeout(() => {
+        location.reload();
+      }, 500);
+      
+    } catch (err) {
+      console.error('Import failed:', err);
+      showImportError();
+    }
+  }
+
+  /**
+   * Show error message for invalid import
+   */
+  function showImportError() {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #dc2626;
+      color: white;
+      padding: 12px 24px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
+      z-index: 10000;
+      animation: slide-up 0.3s ease forwards;
+    `;
+    toast.textContent = 'Invalid ORBIT backup file.';
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.animation = 'slide-down 0.3s ease forwards';
+      setTimeout(() => {
+        document.body.removeChild(toast);
+      }, 300);
+    }, 3000);
+  }
+
+  // Add CSS animations for toasts
+  const toastStyles = document.createElement('style');
+  toastStyles.textContent = `
+    @keyframes slide-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slide-down {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(20px); }
+    }
+  `;
+  document.head.appendChild(toastStyles);
+
+  // ============================================================================
+  // EXPORT / IMPORT EVENT LISTENERS
+  // ============================================================================
+
+  // Export button
+  const exportOrbitBtn = document.getElementById('export-orbit-btn');
+  if (exportOrbitBtn) {
+    exportOrbitBtn.addEventListener('click', exportOrbitData);
+  }
+
+  // Import button
+  const importOrbitBtn = document.getElementById('import-orbit-btn');
+  if (importOrbitBtn) {
+    importOrbitBtn.addEventListener('click', importOrbitData);
+  }
+
+  // Initialize dev test panel on app load
+  initDevTestPanel();
 })();
