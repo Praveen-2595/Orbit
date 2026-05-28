@@ -3691,6 +3691,12 @@
             </button>
           </div>
           <div class="vision-grid" id="vision-grid"></div>
+
+          <!-- Letters to Future Self Section -->
+          <div class="letters-section" style="margin-top: 48px;">
+            <h2 class="section-title" style="margin-bottom: 16px;">Letters to Future Self</h2>
+            <div class="letters-grid" id="letters-grid"></div>
+          </div>
         </div>
 
         <!-- Overview Screen -->
@@ -4135,6 +4141,54 @@ TUESDAY
           <button type="submit" class="btn btn-primary">Add Vision</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Write Letter Modal -->
+  <div class="modal-overlay" id="letter-modal" style="background: #09090B;">
+    <div class="modal" style="background: #09090B; border: 1px solid #27272A; max-width: 700px;">
+      <div class="modal-header" style="border-bottom: 1px solid #27272A;">
+        <h2 class="modal-title" style="color: #E8E4DC;">Letter to Future Self</h2>
+        <button class="modal-close" id="close-letter-modal" style="color: #7A7A88;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 32px;">
+        <div style="font-style: italic; color: #7A7A88; margin-bottom: 16px; font-size: 18px;">Dear future me,</div>
+        <textarea 
+          id="letter-content" 
+          class="form-textarea" 
+          style="background: #09090B; border: 1px solid #27272A; color: #E8E4DC; min-height: 300px; font-size: 16px; line-height: 1.8; resize: vertical;"
+          placeholder="In 90 days I hope you've..."
+        ></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px;">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="color: #7A7A88; font-size: 14px;">Mood:</div>
+            <input type="range" id="letter-mood" min="1" max="5" value="3" style="width: 120px;">
+            <span id="letter-mood-value" style="color: #7A7A88; font-size: 14px;">3</span>
+          </div>
+          <div id="letter-word-count" style="color: #7A7A88; font-size: 14px;">0 words</div>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #27272A;">
+        <button type="button" class="btn btn-secondary" id="cancel-letter">Cancel</button>
+        <button type="button" class="btn btn-primary" id="seal-letter">Seal & Lock →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Letter Reveal Overlay -->
+  <div class="letter-reveal-overlay" id="letter-reveal-overlay" style="display: none;">
+    <div class="lr-date" id="lr-date"></div>
+    <div class="lr-intro">90 days ago, you wrote this.</div>
+    <div class="lr-content" id="lr-content"></div>
+    <div class="lr-closer">That was you. This is you now.</div>
+    <div style="display: flex; gap: 16px; margin-top: 32px;">
+      <button class="btn btn-secondary" id="close-letter-reveal" style="background: #27272A; color: #E8E4DC; border: 1px solid #3A3A45;">Close</button>
+      <button class="btn btn-primary" id="write-new-letter" style="background: #7C6AFA; color: #E8E4DC; border: none;">Write a new letter</button>
     </div>
   </div>
 

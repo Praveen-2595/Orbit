@@ -2007,3 +2007,173 @@ body.chat-open .main { margin-right: 380px; }
     gap: 12px;
   }
 }
+
+/* ========== LETTER TO FUTURE SELF ========== */
+
+.letter-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  background: #09090B;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  animation: lr-fade 1.5s ease;
+}
+
+.lr-date {
+  font-family: monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: #3A3A45;
+  margin-bottom: 32px;
+  text-transform: uppercase;
+}
+
+.lr-intro {
+  font-size: 13px;
+  color: #7A7A88;
+  margin-bottom: 24px;
+  font-style: italic;
+}
+
+.lr-content {
+  max-width: 560px;
+  font-size: 15px;
+  line-height: 1.9;
+  color: #E8E4DC;
+  text-align: center;
+  animation: lr-lines 2s ease 0.5s both;
+}
+
+.lr-closer {
+  margin-top: 48px;
+  font-family: monospace;
+  font-size: 11px;
+  color: #7C6AFA;
+  letter-spacing: 0.1em;
+}
+
+@keyframes lr-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lr-lines {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.letters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.letter-card {
+  background: #0A0A0A;
+  border: 1px solid #27272A;
+  border-radius: 12px;
+  padding: 24px;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.letter-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.letter-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.letter-card-icon {
+  font-size: 20px;
+}
+
+.letter-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #E8E4DC;
+}
+
+.letter-card-description {
+  font-size: 14px;
+  color: #7A7A88;
+  margin-bottom: 16px;
+}
+
+.letter-card-reveal-date {
+  font-size: 13px;
+  color: #7C6AFA;
+  margin-bottom: 12px;
+}
+
+.letter-card-progress {
+  width: 100%;
+  height: 8px;
+  background: #27272A;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.letter-card-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #7C6AFA, #A78BFA);
+  transition: width 0.3s ease;
+}
+
+.letter-card-days-left {
+  font-size: 12px;
+  color: #7A7A88;
+  font-family: monospace;
+}
+
+.letter-card-locked {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #7A7A88;
+  margin-top: 12px;
+  font-style: italic;
+}
+
+.letter-write-card {
+  background: #0A0A0A;
+  border: 1px solid #27272A;
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.letter-write-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  border-color: #7C6AFA;
+}
+
+.letter-write-btn {
+  width: 100%;
+  padding: 12px;
+  background: #7C6AFA;
+  color: #E8E4DC;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.letter-write-btn:hover {
+  background: #A78BFA;
+}

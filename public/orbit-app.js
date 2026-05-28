@@ -3,7 +3,7 @@
   let dayPlannerClockInterval = null;
   let dayPlannerUpdateInterval = null;
 
-  const MOCK_MODE = true;
+  const MOCK_MODE = false;
   // Change to false when using real API key
 
   const ORBIT_LEVELS = [
@@ -93,6 +93,7 @@
     TODAY_OVERRIDE: 'orbit_today_override',
     QUICK_TASKS: 'orbit_quick_tasks',
     TIMETABLE_BLOCKS: 'orbit_timetable_blocks',
+    LETTERS: 'orbit_letters',
   };
 
   const DOOM_RGBA = {
@@ -463,6 +464,39 @@
     
     saveOrbitStakes(currentStakes);
     return currentStakes;
+  }
+
+  // ============================================================================
+  // LETTER TO FUTURE SELF STORAGE LAYER
+  // ============================================================================
+
+  function getLetters() {
+    return loadData(STORAGE_KEYS.LETTERS, { letters: [] });
+  }
+
+  function saveLetters(data) {
+    saveData(STORAGE_KEYS.LETTERS, data);
+  }
+
+  function checkLetterReveals() {
+    const data = getLetters();
+    const now = new Date();
+    let hasReveal = false;
+
+    data.letters.forEach(letter => {
+      if (!letter.revealed && new Date(letter.reveal_at) <= now) {
+        letter.revealed = true;
+        hasReveal = true;
+      }
+    });
+
+    if (hasReveal) {
+      saveLetters(data);
+      const unrevealedLetter = data.letters.find(l => l.revealed && !l.seen);
+      if (unrevealedLetter) {
+        showLetterReveal(unrevealedLetter);
+      }
+    }
   }
 
   // ============================================================================
@@ -3656,6 +3690,194 @@
     updateDoomMeter();
   });
 
+  // ============================================================================
+  // LETTER TO FUTURE SELF UI FUNCTIONS
+  // ============================================================================
+
+  const lettersGrid = document.getElementById('letters-grid');
+  const letterModal = document.getElementById('letter-modal');
+  const closeLetterModal = document.getElementById('close-letter-modal');
+  const cancelLetter = document.getElementById('cancel-letter');
+  const sealLetterBtn = document.getElementById('seal-letter');
+  const letterContent = document.getElementById('letter-content');
+  const letterMood = document.getElementById('letter-mood');
+  const letterMoodValue = document.getElementById('letter-mood-value');
+  const letterWordCount = document.getElementById('letter-word-count');
+  const letterRevealOverlay = document.getElementById('letter-reveal-overlay');
+  const lrDate = document.getElementById('lr-date');
+  const lrContent = document.getElementById('lr-content');
+  const closeLetterReveal = document.getElementById('close-letter-reveal');
+  const writeNewLetter = document.getElementById('write-new-letter');
+
+  function renderLetters() {
+    const data = getLetters();
+    const letters = data.letters || [];
+    const now = new Date();
+
+    if (letters.length === 0) {
+      const revealDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+      lettersGrid.innerHTML = `
+        <div class="letter-write-card" onclick="openLetterModal()">
+          <div class="letter-card-header">
+            <span class="letter-card-icon">✉</span>
+            <span class="letter-card-title">Letter to Future Self</span>
+          </div>
+          <div class="letter-card-description">Write to yourself 90 days from now.</div>
+          <div class="letter-card-reveal-date">Sealed until ${revealDate.toLocaleDateString()}</div>
+          <button class="letter-write-btn">Write Your Letter →</button>
+        </div>
+      `;
+      return;
+    }
+
+    lettersGrid.innerHTML = letters.map(letter => {
+      const writtenDate = new Date(letter.written_at);
+      const revealDate = new Date(letter.reveal_at);
+      const daysSinceWritten = Math.floor((now - writtenDate) / (24 * 60 * 60 * 1000));
+      const daysUntilReveal = Math.ceil((revealDate - now) / (24 * 60 * 60 * 1000));
+      const progress = Math.min(100, Math.max(0, ((90 - daysUntilReveal) / 90) * 100));
+
+      if (letter.revealed && letter.seen) {
+        return `
+          <div class="letter-card">
+            <div class="letter-card-header">
+              <span class="letter-card-icon">✉</span>
+              <span class="letter-card-title">Opened Letter</span>
+            </div>
+            <div class="letter-card-description">Written ${daysSinceWritten} days ago</div>
+            <div class="letter-card-reveal-date">Opened on ${revealDate.toLocaleDateString()}</div>
+            <div class="letter-card-locked" style="color: #7C6AFA;">You've read this letter</div>
+          </div>
+        `;
+      }
+
+      if (letter.revealed) {
+        return `
+          <div class="letter-card" style="border-color: #7C6AFA; cursor: pointer;" onclick="showLetterRevealById('${letter.id}')">
+            <div class="letter-card-header">
+              <span class="letter-card-icon">✉</span>
+              <span class="letter-card-title">Letter Ready to Open!</span>
+            </div>
+            <div class="letter-card-description">Written ${daysSinceWritten} days ago</div>
+            <div class="letter-card-reveal-date">Ready to read now</div>
+            <div class="letter-card-locked" style="color: #7C6AFA;">Click to open your letter</div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="letter-card">
+          <div class="letter-card-header">
+            <span class="letter-card-icon">✉</span>
+            <span class="letter-card-title">Sealed Letter</span>
+          </div>
+          <div class="letter-card-description">Written ${daysSinceWritten} days ago</div>
+          <div class="letter-card-reveal-date">Opens on ${revealDate.toLocaleDateString()}</div>
+          <div class="letter-card-progress">
+            <div class="letter-card-progress-bar" style="width: ${progress}%"></div>
+          </div>
+          <div class="letter-card-days-left">${daysUntilReveal} days left</div>
+          <div class="letter-card-locked">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            "You had something to say to yourself"
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function openLetterModal() {
+    letterModal.classList.add('active');
+    letterContent.value = '';
+    letterMood.value = 3;
+    letterMoodValue.textContent = '3';
+    letterWordCount.textContent = '0 words';
+    letterContent.focus();
+  }
+
+  function sealLetter() {
+    const content = letterContent.value.trim();
+    if (!content) {
+      alert('Please write something to your future self.');
+      return;
+    }
+
+    const mood = parseInt(letterMood.value, 10);
+    const doom = calculateDoom();
+    const now = new Date();
+    const revealAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+    const data = getLetters();
+    data.letters.push({
+      id: generateId(),
+      written_at: now.toISOString(),
+      reveal_at: revealAt.toISOString(),
+      content: content,
+      mood_at_writing: mood,
+      doom_at_writing: doom,
+      revealed: false,
+      seen: false
+    });
+
+    saveLetters(data);
+    letterModal.classList.remove('active');
+    renderLetters();
+  }
+
+  function showLetterReveal(letter) {
+    const writtenDate = new Date(letter.written_at);
+    lrDate.textContent = writtenDate.toLocaleDateString();
+    lrContent.textContent = letter.content;
+    letterRevealOverlay.style.display = 'flex';
+
+    // Mark as seen
+    const data = getLetters();
+    const letterIndex = data.letters.findIndex(l => l.id === letter.id);
+    if (letterIndex !== -1) {
+      data.letters[letterIndex].seen = true;
+      saveLetters(data);
+    }
+  }
+
+  function showLetterRevealById(letterId) {
+    const data = getLetters();
+    const letter = data.letters.find(l => l.id === letterId);
+    if (letter) {
+      showLetterReveal(letter);
+    }
+  }
+
+  // Event listeners for letter modal
+  letterMood.addEventListener('input', () => {
+    letterMoodValue.textContent = letterMood.value;
+  });
+
+  letterContent.addEventListener('input', () => {
+    const words = letterContent.value.trim().split(/\s+/).filter(w => w.length > 0);
+    letterWordCount.textContent = `${words.length} word${words.length !== 1 ? 's' : ''}`;
+  });
+
+  closeLetterModal.addEventListener('click', () => letterModal.classList.remove('active'));
+  cancelLetter.addEventListener('click', () => letterModal.classList.remove('active'));
+  sealLetterBtn.addEventListener('click', sealLetter);
+
+  closeLetterReveal.addEventListener('click', () => {
+    letterRevealOverlay.style.display = 'none';
+    renderLetters();
+  });
+
+  writeNewLetter.addEventListener('click', () => {
+    letterRevealOverlay.style.display = 'none';
+    openLetterModal();
+  });
+
+  // Expose letter functions globally for onclick handlers
+  window.openLetterModal = openLetterModal;
+  window.showLetterRevealById = showLetterRevealById;
+
   function renderOverview() {
     window.dispatchEvent(new CustomEvent('orbit:overview'));
   }
@@ -3719,6 +3941,10 @@
       goal_stakes: {},
       onboarding_complete: false,
     });
+
+    const lettersData = getLetters();
+    const hasLetter = lettersData.letters.length > 0;
+    const latestLetter = hasLetter ? lettersData.letters[lettersData.letters.length - 1] : null;
 
     let stakesSection = '';
     if (stakesData.onboarding_complete && Object.keys(stakesData.life_context).length > 0) {
@@ -3813,6 +4039,8 @@ Pending: ${todayChecklist.filter(isTodayChecklistItem).filter((i) => !i.complete
 
 DOOM METER: ${doom}%
 
+LETTER TO FUTURE SELF: ${hasLetter ? `Written on ${new Date(latestLetter.written_at).toLocaleDateString()}. Doom was ${latestLetter.doom_at_writing}% when they wrote it.` : 'Not written yet'}
+
 RULES:
 1. Talk like a real friend first. Goals are context, not the topic.
 2. Be honest. No toxic positivity. No sugarcoating either.
@@ -3823,7 +4051,8 @@ RULES:
 7. Keep it concise — they have a life to live.
 8. Doom meter affects your tone: ${doom <= 25 ? 'Calm and casual' : doom <= 50 ? 'Gently encouraging' : doom <= 70 ? 'More direct about priorities' : 'Honest about what needs to happen'}.
 9. When a goal has less than 24 hours remaining, treat it as the highest priority in the conversation. Reference the exact hours left, not just the date. Time is the variable that matters now.
-10. Reference the user's level naturally when relevant. If they're close to leveling up, mention it as motivation — not pressure.`;
+10. Reference the user's level naturally when relevant. If they're close to leveling up, mention it as motivation — not pressure.
+11. If user hasn't written a letter yet and doom is above 30%, casually mention it once: "Have you written your letter to future self yet? It takes 5 minutes and it's worth it."`;
   }
 
   async function sendToAI(userMessage) {
