@@ -1501,6 +1501,110 @@
   }
 
   /**
+   * Calculate doom for streak-based goals
+   * Uses days_missed / target_days ratio instead of hours
+   * @param {Object} goal - Goal object
+   * @param {Date} now - Current date
+   * @returns {Object} Risk analysis with doom score (0-100)
+   */
+  function calculateStreakBasedGoalRisk(goal, now) {
+    const deadline = new Date(goal.deadline);
+    if (!isValidDate(deadline)) {
+      return { doom: 0, factors: [] };
+    }
+
+    const targetDays = Number(goal.target_days) || 30;
+    const streakCount = Number(goal.streak_count) || 0;
+    const daysRemaining = Math.max(0, (deadline - now) / 86400000); // Convert to days
+
+    // Check if overdue
+    const deadlineDate = new Date(goal.deadline);
+    if (goal.deadline && !goal.deadline.includes('T')) {
+      deadlineDate.setHours(23, 59, 59, 999);
+    }
+    const isOverdue = deadlineDate < now;
+
+    // Calculate expected streak based on time elapsed
+    const created = new Date(goal.created_at || now);
+    const totalDuration = Math.max(1, (deadline - created) / 86400000); // Total days from creation to deadline
+    const elapsed = Math.max(0, (now - created) / 86400000); // Days elapsed since creation
+    const expectedStreak = Math.min(targetDays, Math.round((elapsed / totalDuration) * targetDays));
+
+    // Calculate days missed (how far behind expected streak)
+    const daysMissed = Math.max(0, expectedStreak - streakCount);
+
+    // Calculate days remaining ratio
+    const daysRemainingRatio = Math.max(0, daysRemaining / totalDuration);
+
+    // Base doom from days missed / target days ratio
+    let missedRatioDoom = 0;
+    if (targetDays > 0) {
+      const missedRatio = daysMissed / targetDays;
+      missedRatioDoom = Math.min(50, missedRatio * 100);
+    }
+
+    // Doom from being behind schedule (progress gap)
+    let progressDoom = 0;
+    const actualProgress = Math.min(1, streakCount / targetDays);
+    const expectedProgress = Math.min(1, elapsed / totalDuration);
+    const progressGap = Math.max(0, expectedProgress - actualProgress);
+    if (progressGap > 0) {
+      progressDoom = Math.min(30, progressGap * 50);
+    }
+
+    // Doom from no progress near deadline
+    let noProgressDoom = 0;
+    if (streakCount === 0 && daysRemaining < 7) {
+      noProgressDoom = Math.min(25, (7 - daysRemaining) / 7 * 25);
+    }
+
+    // Doom from overdue status
+    let overdueDoom = 0;
+    if (isOverdue) {
+      const daysOverdue = Math.abs(daysRemaining);
+      overdueDoom = Math.min(40, daysOverdue * 10);
+    }
+
+    // Urgency multiplier based on days remaining
+    let urgencyMultiplier = 1.0;
+    if (isOverdue) urgencyMultiplier = 2.5;
+    else if (daysRemaining <= 1) urgencyMultiplier = 2.2;
+    else if (daysRemaining <= 3) urgencyMultiplier = 1.8;
+    else if (daysRemaining <= 7) urgencyMultiplier = 1.4;
+    else if (daysRemaining <= 14) urgencyMultiplier = 1.2;
+
+    // Combine all doom factors with urgency multiplier
+    const baseDoom = missedRatioDoom + progressDoom + noProgressDoom + overdueDoom;
+    const weightedDoom = baseDoom * urgencyMultiplier;
+
+    // Apply priority weight
+    const priorityWeight = calculatePriorityWeight(goal.priority);
+    const finalDoom = weightedDoom * priorityWeight;
+
+    // Smooth to avoid spikes
+    const smoothedDoom = smoothDoom(finalDoom);
+
+    // Clamp to 0-100
+    const clampedDoom = Math.min(100, Math.max(0, smoothedDoom));
+
+    return {
+      doom: clampedDoom,
+      factors: {
+        daysMissed,
+        expectedStreak,
+        streakCount,
+        urgencyMultiplier,
+        progressGap,
+        missedRatioDoom,
+        progressDoom,
+        noProgressDoom,
+        overdueDoom,
+        isOverdue,
+      }
+    };
+  }
+
+  /**
    * Calculate overall goal risk score based on multiple factors
    * Combines pace analysis, progress gap, and deadline pressure
    * @param {Object} goal - Goal object
@@ -1508,6 +1612,14 @@
    * @returns {Object} Risk analysis with doom score (0-100)
    */
   function calculateGoalRisk(goal, now) {
+    const goalType = goal.type || 'hour-based';
+    
+    // For streak-based goals, use different calculation
+    if (goalType === 'streak-based') {
+      return calculateStreakBasedGoalRisk(goal, now);
+    }
+    
+    // Original hour-based calculation
     const deadline = new Date(goal.deadline);
     if (!isValidDate(deadline)) {
       return { doom: 0, factors: [] };
@@ -3258,7 +3370,14 @@
 
     container.innerHTML = items
       .map(
-        (item) => `
+        (item) => {
+          // Find goals that link to this checklist item
+          const linkedGoals = goals.filter((g) => g.linked_checklist_id === item.id);
+          const linkedGoalTags = linkedGoals
+            .map((goal) => `<span class="checklist-tag">→ counts for: ${escapeHtml(goal.title.length > 15 ? goal.title.substring(0, 15) + '...' : goal.title)}</span>`)
+            .join('');
+
+          return `
         <div class="checklist-item ${item.completed ? 'completed' : ''}" data-id="${escapeHtml(item.id)}" data-list="${listType}">
           <div class="checklist-checkbox ${item.completed ? 'checked' : ''}" data-action="toggle-checklist">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -3266,7 +3385,7 @@
             </svg>
           </div>
           <span class="checklist-text">${escapeHtml(item.title)}</span>
-          ${item.linked_goal_id ? `<span class="checklist-tag">${escapeHtml(getGoalTitle(item.linked_goal_id))}</span>` : ''}
+          ${linkedGoalTags}
           <button type="button" class="checklist-delete" data-action="delete-checklist" aria-label="Delete task">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -3274,7 +3393,8 @@
             </svg>
           </button>
         </div>
-      `,
+      `;
+        }
       )
       .join('');
   }
@@ -3337,12 +3457,78 @@
     }
     renderChecklists();
     updateDoomMeter();
+    
+    const today = new Date().toISOString().split('T')[0];
+    const linkedGoals = goals.filter((g) => g.linked_checklist_id === id);
+    
     if (item.completed && !wasCompleted) {
       // Record activity for streak tracking
       recordActivity('checklistCompleted');
-      window.dispatchEvent(
-        new CustomEvent('orbit:habitComplete', { detail: { id, listType } }),
-      );
+      
+      // Only award points if not already awarded today
+      if (item.points_awarded_date !== today) {
+        window.dispatchEvent(
+          new CustomEvent('orbit:habitComplete', { detail: { id, listType } }),
+        );
+        item.points_awarded_date = today;
+        if (listType === 'daily') {
+          saveData(STORAGE_KEYS.DAILY_CHECKLIST, dailyChecklist);
+        } else {
+          saveData(STORAGE_KEYS.TODAY_CHECKLIST, todayChecklist);
+        }
+      }
+
+      // Auto-increment linked goals
+      linkedGoals.forEach((goal) => {
+        const goalType = goal.type || 'hour-based';
+        if (goalType === 'streak-based') {
+          // Increment streak count only if not already counted today
+          if (goal.last_streak_date !== today) {
+            goal.streak_count = (Number(goal.streak_count) || 0) + 1;
+            goal.last_streak_date = today;
+          }
+        } else {
+          // Log 1 session (25 minutes = 0.416 hours) for hour-based goals
+          goal.logged_hours = (Number(goal.logged_hours) || 0) + 0.416;
+        }
+      });
+      if (linkedGoals.length > 0) {
+        saveData(STORAGE_KEYS.GOALS, goals);
+        renderGoals();
+        updateDoomMeter();
+      }
+    } else if (!item.completed && wasCompleted) {
+      // Handle uncheck: decrement streak if it was counted today
+      linkedGoals.forEach((goal) => {
+        const goalType = goal.type || 'hour-based';
+        if (goalType === 'streak-based') {
+          if (goal.last_streak_date === today) {
+            goal.streak_count = Math.max(0, (Number(goal.streak_count) || 0) - 1);
+            goal.last_streak_date = null;
+          }
+        } else {
+          // Remove 1 session (25 minutes = 0.416 hours) for hour-based goals
+          goal.logged_hours = Math.max(0, (Number(goal.logged_hours) || 0) - 0.416);
+        }
+      });
+      if (linkedGoals.length > 0) {
+        saveData(STORAGE_KEYS.GOALS, goals);
+        renderGoals();
+        updateDoomMeter();
+      }
+      
+      // Subtract points if they were awarded today
+      if (item.points_awarded_date === today) {
+        window.dispatchEvent(
+          new CustomEvent('orbit:habitIncomplete', { detail: { id, listType } }),
+        );
+        item.points_awarded_date = null;
+        if (listType === 'daily') {
+          saveData(STORAGE_KEYS.DAILY_CHECKLIST, dailyChecklist);
+        } else {
+          saveData(STORAGE_KEYS.TODAY_CHECKLIST, todayChecklist);
+        }
+      }
     }
   }
 
@@ -3848,11 +4034,17 @@
   }
 
   function renderGoalCard(goal, showDelete) {
-    const progress = safeProgress(goal.logged_hours, goal.total_hours);
+    const goalType = goal.type || 'hour-based';
     const priority = getPriorityLabel(goal.priority);
     const vision = visions.find((v) => v.id === goal.linked_vision_id);
     const visionTag = vision
       ? `<span class="goal-tag">${escapeHtml(vision.title.length > 12 ? vision.title.substring(0, 12) + '...' : vision.title)}</span>`
+      : '';
+
+    // Get linked checklist item
+    const linkedChecklistItem = goal.linked_checklist_id ? dailyChecklist.find((item) => item.id === goal.linked_checklist_id) : null;
+    const checklistTag = linkedChecklistItem
+      ? `<span class="goal-tag">🔗 ${escapeHtml(linkedChecklistItem.title.length > 12 ? linkedChecklistItem.title.substring(0, 12) + '...' : linkedChecklistItem.title)}</span>`
       : '';
 
     const goalStakes = stakes.goal_stakes[goal.id] || {
@@ -3866,6 +4058,30 @@
     const deadlineDisplay = formatDeadlineWithTime(goal);
     const hoursLeft = getHoursLeft(goal);
     const hasTimeSet = goal.has_time_deadline || goal.hours_remaining_override !== null;
+
+    // Calculate progress based on goal type
+    let progress, progressText;
+    if (goalType === 'streak-based') {
+      const targetDays = Number(goal.target_days) || 30;
+      const streakCount = Number(goal.streak_count) || 0;
+      progress = Math.min(100, Math.round((streakCount / targetDays) * 100));
+      progressText = `${streakCount} / ${targetDays} days`;
+    } else {
+      progress = safeProgress(goal.logged_hours, goal.total_hours);
+      progressText = `${Number(goal.logged_hours) || 0}h / ${Number(goal.total_hours) || 0}h`;
+    }
+
+    // Streak display for streak-based goals
+    const streakDisplay = goalType === 'streak-based' 
+      ? `<div class="goal-streak-display">🔥 ${Number(goal.streak_count) || 0} day streak</div>`
+      : '';
+
+    // Add time button - only for hour-based goals
+    const addTimeButton = goalType === 'hour-based'
+      ? `<button class="deadline-time-toggle" data-goal-id="${escapeHtml(goal.id)}" data-action="toggle-deadline-time" aria-label="Add time">
+              ${hasTimeSet ? '▾' : 'add time'}
+            </button>`
+      : '';
 
     return `
       <div class="goal-card" data-id="${escapeHtml(goal.id)}">
@@ -3887,13 +4103,15 @@
             <div class="progress-fill" style="width: ${progress}%"></div>
           </div>
           <div class="progress-text">
-            <span>${Number(goal.logged_hours) || 0}h / ${Number(goal.total_hours) || 0}h</span>
+            <span>${progressText}</span>
             <span>${progress}%</span>
           </div>
         </div>
+        ${streakDisplay}
         <div class="goal-footer">
           ${goal.subject ? `<span class="goal-tag">${escapeHtml(goal.subject)}</span>` : ''}
           ${visionTag}
+          ${checklistTag}
           <span class="goal-deadline ${deadlineColorClass}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -3903,11 +4121,10 @@
             </svg>
             ${deadlineDisplay}
             ${hoursLeft < 1 ? '<span class="urgent-badge">URGENT</span>' : ''}
-            <button class="deadline-time-toggle" data-goal-id="${escapeHtml(goal.id)}" data-action="toggle-deadline-time" aria-label="Add time">
-              ${hasTimeSet ? '▾' : 'add time'}
-            </button>
+            ${addTimeButton}
           </span>
         </div>
+        ${goalType === 'hour-based' ? `
         <div class="goal-deadline-time-input" id="deadline-time-${escapeHtml(goal.id)}" style="display: none;">
           <div class="deadline-time-field">
             <label>Deadline time</label>
@@ -3923,6 +4140,7 @@
           </div>
           <button class="deadline-time-save" data-goal-id="${escapeHtml(goal.id)}">Save</button>
         </div>
+        ` : ''}
         <div class="goal-stakes-section">
           <button class="goal-stakes-toggle" data-goal-id="${escapeHtml(goal.id)}" data-action="toggle-stakes">
             WHY THIS ACTUALLY MATTERS
@@ -4096,8 +4314,66 @@
         .join('');
   }
 
+  function updateChecklistSelect(selectElement) {
+    selectElement.innerHTML =
+      '<option value="">None</option>' +
+      dailyChecklist
+        .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.title)}</option>`)
+        .join('');
+  }
+
+  function handleGoalTypeToggle(formType) {
+    const isAdd = formType === 'add';
+    const typeRadios = document.querySelectorAll(`input[name="${isAdd ? 'goal-type' : 'edit-goal-type'}"]`);
+    const hoursGroup = document.getElementById(isAdd ? 'goal-hours-group' : 'edit-goal-hours-group');
+    const loggedHoursGroup = document.getElementById('edit-goal-logged-hours-group');
+    const targetDaysGroup = document.getElementById(isAdd ? 'goal-target-days-group' : 'edit-goal-target-days-group');
+    const streakCountGroup = document.getElementById('edit-goal-streak-count-group');
+    const helperText = document.getElementById(isAdd ? 'goal-type-helper' : 'edit-goal-type-helper');
+
+    typeRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const selectedType = e.target.value;
+        if (selectedType === 'hour-based') {
+          hoursGroup.style.display = 'block';
+          if (loggedHoursGroup) loggedHoursGroup.style.display = 'block';
+          targetDaysGroup.style.display = 'none';
+          if (streakCountGroup) streakCountGroup.style.display = 'none';
+          helperText.textContent = 'Track by time spent — use with Pomodoro or manual logging';
+        } else {
+          hoursGroup.style.display = 'none';
+          if (loggedHoursGroup) loggedHoursGroup.style.display = 'none';
+          targetDaysGroup.style.display = 'block';
+          if (streakCountGroup) streakCountGroup.style.display = 'block';
+          helperText.textContent = 'Track by daily consistency — connect to your daily checklist';
+        }
+      });
+    });
+
+    // Initialize state based on currently checked radio
+    const checkedRadio = document.querySelector(`input[name="${isAdd ? 'goal-type' : 'edit-goal-type'}"]:checked`);
+    if (checkedRadio) {
+      const selectedType = checkedRadio.value;
+      if (selectedType === 'hour-based') {
+        hoursGroup.style.display = 'block';
+        if (loggedHoursGroup) loggedHoursGroup.style.display = 'block';
+        targetDaysGroup.style.display = 'none';
+        if (streakCountGroup) streakCountGroup.style.display = 'none';
+        helperText.textContent = 'Track by time spent — use with Pomodoro or manual logging';
+      } else {
+        hoursGroup.style.display = 'none';
+        if (loggedHoursGroup) loggedHoursGroup.style.display = 'none';
+        targetDaysGroup.style.display = 'block';
+        if (streakCountGroup) streakCountGroup.style.display = 'block';
+        helperText.textContent = 'Track by daily consistency — connect to your daily checklist';
+      }
+    }
+  }
+
   addGoalBtn.addEventListener('click', () => {
     updateVisionSelect();
+    updateChecklistSelect(document.getElementById('goal-checklist-link'));
+    handleGoalTypeToggle('add');
     goalModal.classList.add('active');
   });
 
@@ -4107,23 +4383,44 @@
   goalForm.addEventListener('submit', (e) => {
     e.preventDefault();
 
-    const totalHours = Math.max(1, parseInt(document.getElementById('goal-hours').value, 10) || 1);
+    const goalType = document.querySelector('input[name="goal-type"]:checked').value;
     const linkedVisionId = document.getElementById('goal-vision-link').value || null;
+    const linkedChecklistId = document.getElementById('goal-checklist-link').value || null;
 
-    goals.push({
+    // Manual validation for conditionally required fields
+    if (goalType === 'hour-based') {
+      const totalHours = parseInt(document.getElementById('goal-hours').value, 10);
+      if (!totalHours || totalHours < 1) {
+        alert('Please enter total hours for hour-based goals');
+        return;
+      }
+    }
+
+    const goalData = {
       id: generateId(),
       title: document.getElementById('goal-title').value.trim(),
       subject: document.getElementById('goal-subject').value.trim(),
-      total_hours: totalHours,
-      logged_hours: 0,
       deadline: document.getElementById('goal-deadline').value,
       deadline_time: '23:59',
       has_time_deadline: false,
       hours_remaining_override: null,
       priority: parseInt(document.getElementById('goal-priority').value, 10) || 2,
       linked_vision_id: linkedVisionId,
+      linked_checklist_id: linkedChecklistId,
       created_at: new Date().toISOString(),
-    });
+    };
+
+    if (goalType === 'hour-based') {
+      goalData.type = 'hour-based';
+      goalData.total_hours = Math.max(1, parseInt(document.getElementById('goal-hours').value, 10) || 1);
+      goalData.logged_hours = 0;
+    } else {
+      goalData.type = 'streak-based';
+      goalData.target_days = Math.max(1, parseInt(document.getElementById('goal-target-days').value, 10) || 30);
+      goalData.streak_count = 0;
+    }
+
+    goals.push(goalData);
 
     saveData(STORAGE_KEYS.GOALS, goals);
     syncVisionLinkedGoals();
@@ -4150,21 +4447,56 @@
 
     currentEditingGoalId = goalId;
     updateEditVisionSelect();
+    updateChecklistSelect(document.getElementById('edit-goal-checklist-link'));
+
+    // Determine goal type (default to hour-based for existing goals without type)
+    const goalType = goal.type || 'hour-based';
+
+    // Set goal type radio
+    const typeRadio = document.querySelector(`input[name="edit-goal-type"][value="${goalType}"]`);
+    if (typeRadio) typeRadio.checked = true;
 
     // Populate form with current goal values
     document.getElementById('edit-goal-title').value = goal.title || '';
     document.getElementById('edit-goal-subject').value = goal.subject || '';
-    document.getElementById('edit-goal-total-hours').value = goal.total_hours || 1;
-    document.getElementById('edit-goal-logged-hours').value = goal.logged_hours || 0;
     document.getElementById('edit-goal-deadline').value = goal.deadline || '';
     document.getElementById('edit-goal-deadline-time').value = goal.deadline_time || '23:59';
     document.getElementById('edit-goal-has-time-deadline').checked = goal.has_time_deadline || false;
     document.getElementById('edit-goal-priority').value = goal.priority || 2;
     document.getElementById('edit-goal-vision-link').value = goal.linked_vision_id || '';
+    document.getElementById('edit-goal-checklist-link').value = goal.linked_checklist_id || '';
 
     // Populate stake from orbit_stakes
     const goalStakes = stakes.goal_stakes[goalId] || {};
     document.getElementById('edit-goal-stake').value = goalStakes.personal_stake || goalStakes.consequence_if_missed || '';
+
+    // Handle type-specific fields
+    const hoursGroup = document.getElementById('edit-goal-hours-group');
+    const loggedHoursGroup = document.getElementById('edit-goal-logged-hours-group');
+    const targetDaysGroup = document.getElementById('edit-goal-target-days-group');
+    const streakCountGroup = document.getElementById('edit-goal-streak-count-group');
+    const helperText = document.getElementById('edit-goal-type-helper');
+
+    if (goalType === 'hour-based') {
+      hoursGroup.style.display = 'block';
+      loggedHoursGroup.style.display = 'block';
+      targetDaysGroup.style.display = 'none';
+      streakCountGroup.style.display = 'none';
+      helperText.textContent = 'Track by time spent — use with Pomodoro or manual logging';
+      document.getElementById('edit-goal-total-hours').value = goal.total_hours || 1;
+      document.getElementById('edit-goal-logged-hours').value = goal.logged_hours || 0;
+    } else {
+      hoursGroup.style.display = 'none';
+      loggedHoursGroup.style.display = 'none';
+      targetDaysGroup.style.display = 'block';
+      streakCountGroup.style.display = 'block';
+      helperText.textContent = 'Track by daily consistency — connect to your daily checklist';
+      document.getElementById('edit-goal-target-days').value = goal.target_days || 30;
+      document.getElementById('edit-goal-streak-count').value = goal.streak_count || 0;
+    }
+
+    // Setup toggle handler
+    handleGoalTypeToggle('edit');
 
     editGoalModal.classList.add('active');
   }
@@ -4197,16 +4529,45 @@
     const goalIndex = goals.findIndex((g) => g.id === currentEditingGoalId);
     if (goalIndex === -1) return;
 
-    // Update goal data
+    const goalType = document.querySelector('input[name="edit-goal-type"]:checked').value;
+
+    // Manual validation for conditionally required fields
+    if (goalType === 'hour-based') {
+      const totalHours = parseInt(document.getElementById('edit-goal-total-hours').value, 10);
+      const loggedHours = parseInt(document.getElementById('edit-goal-logged-hours').value, 10);
+      if (!totalHours || totalHours < 1) {
+        alert('Please enter total hours for hour-based goals');
+        return;
+      }
+      if (loggedHours < 0) {
+        alert('Logged hours cannot be negative');
+        return;
+      }
+    }
+
+    // Update common goal data
     goals[goalIndex].title = document.getElementById('edit-goal-title').value.trim();
     goals[goalIndex].subject = document.getElementById('edit-goal-subject').value.trim();
-    goals[goalIndex].total_hours = Math.max(1, parseInt(document.getElementById('edit-goal-total-hours').value, 10) || 1);
-    goals[goalIndex].logged_hours = Math.max(0, parseInt(document.getElementById('edit-goal-logged-hours').value, 10) || 0);
     goals[goalIndex].deadline = document.getElementById('edit-goal-deadline').value;
     goals[goalIndex].deadline_time = document.getElementById('edit-goal-deadline-time').value || '23:59';
     goals[goalIndex].has_time_deadline = document.getElementById('edit-goal-has-time-deadline').checked;
     goals[goalIndex].priority = parseInt(document.getElementById('edit-goal-priority').value, 10) || 2;
     goals[goalIndex].linked_vision_id = document.getElementById('edit-goal-vision-link').value || null;
+    goals[goalIndex].linked_checklist_id = document.getElementById('edit-goal-checklist-link').value || null;
+    goals[goalIndex].type = goalType;
+
+    // Update type-specific data
+    if (goalType === 'hour-based') {
+      goals[goalIndex].total_hours = Math.max(1, parseInt(document.getElementById('edit-goal-total-hours').value, 10) || 1);
+      goals[goalIndex].logged_hours = Math.max(0, parseInt(document.getElementById('edit-goal-logged-hours').value, 10) || 0);
+      delete goals[goalIndex].target_days;
+      delete goals[goalIndex].streak_count;
+    } else {
+      goals[goalIndex].target_days = Math.max(1, parseInt(document.getElementById('edit-goal-target-days').value, 10) || 30);
+      goals[goalIndex].streak_count = Math.max(0, parseInt(document.getElementById('edit-goal-streak-count').value, 10) || 0);
+      delete goals[goalIndex].total_hours;
+      delete goals[goalIndex].logged_hours;
+    }
 
     // Update stake in orbit_stakes if changed
     const newStake = document.getElementById('edit-goal-stake').value.trim();

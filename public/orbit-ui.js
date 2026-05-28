@@ -967,6 +967,13 @@
     }
     refreshAll();
   });
+  window.addEventListener('orbit:habitIncomplete', (e) => {
+    const oldPoints = getTotalPoints();
+    habitPointsToday = Math.max(0, habitPointsToday - 10);
+    localStorage.setItem('orbit_habit_points_ui', String(habitPointsToday));
+    const newPoints = getTotalPoints();
+    refreshAll();
+  });
   window.addEventListener('orbit:sessionComplete', showSessionComplete);
 
   document.querySelectorAll('.nav-item[data-screen]').forEach((btn) => {
