@@ -351,7 +351,7 @@ Use it, fork it, build on it. Just don't remove the attribution.
 
 <div align="center">
 
-**Built by [Pawin](https://github.com/yourusername) — shipping in public**
+**Built by [Praveen](https://github.com/praveen-2595) — shipping in public**
 
 *If ORBIT helped you — star the repo. It means more than you think.*
 
