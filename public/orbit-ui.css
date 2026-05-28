@@ -1186,6 +1186,13 @@ body.chat-open .main { margin-right: 380px; }
   height: 18px;
 }
 
+/* AI Generate Section */
+.day-planner-ai-section {
+  padding: 20px 0;
+  border-top: 1px solid var(--border-color);
+  margin-top: 8px;
+}
+
 /* Override Modal */
 .day-planner-form-info {
   padding: 12px 16px;

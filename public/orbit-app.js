@@ -5579,10 +5579,32 @@ TUESDAY
       saveTextBtn.addEventListener('click', saveTextToTemplate);
     }
 
-    // AI generate button
+    // AI generate button (modal)
     const aiGenerateBtn = document.getElementById('weekly-ai-generate-btn');
     if (aiGenerateBtn) {
       aiGenerateBtn.addEventListener('click', () => {
+        // Open chat panel
+        const panel = document.getElementById('chat-panel');
+        const toggle = document.getElementById('header-chat-toggle');
+        if (panel && toggle) {
+          panel.classList.remove('collapsed');
+          toggle.classList.add('active');
+          localStorage.setItem('orbit_chat_open', 'true');
+
+          // Pre-fill message
+          const chatInput = document.getElementById('chat-input');
+          if (chatInput) {
+            chatInput.value = 'Build me a weekly timetable. Ask me what you need.';
+            chatInput.focus();
+          }
+        }
+      });
+    }
+
+    // AI generate button (Day Planner page)
+    const dayPlannerAiBtn = document.getElementById('day-planner-ai-generate-btn');
+    if (dayPlannerAiBtn) {
+      dayPlannerAiBtn.addEventListener('click', () => {
         // Open chat panel
         const panel = document.getElementById('chat-panel');
         const toggle = document.getElementById('header-chat-toggle');
